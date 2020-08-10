@@ -79,4 +79,4 @@ var savedFxRateStream = rowStream
     })
     .EfCoreSave($"{TaskName}: Save fx rate", o => o.SeekOn(i => new { i.Date, i.CurrencyToId }));
 #endregion
-return FileStream.WaitWhenDone($"{TaskName}: wait till everything is processed", savedIndexHistoricalValueStream, savedFxRateStream);
+FileStream.WaitWhenDone($"{TaskName}: wait till everything is processed", savedIndexHistoricalValueStream, savedFxRateStream)
