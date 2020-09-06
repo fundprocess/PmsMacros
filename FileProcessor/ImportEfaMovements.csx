@@ -192,6 +192,9 @@ SecurityTransaction CreateSecurityTransaction(
     TransactionType transactionType = MapTransactionType(lcat, ttyp);
     OperationType operationType = MapOperationType(mgroup, mtyp);
     double sig = operationType == OperationType.Purchase ? -1 : 1;
+    var netAmountInPortfolioCcy = inOutPriceTrCcy != 0
+        ? sig * (inOutPriceTrCcy - transactionFees) * (inOutPriceSubCcy / inOutPriceTrCcy)
+        : 0;
     return new SecurityTransaction
     {
         Description = transactionName,
@@ -202,7 +205,7 @@ SecurityTransaction CreateSecurityTransaction(
         FeesInSecurityCcy = transactionFees,
         GrossAmountInPortfolioCcy = sig * inOutPriceSubCcy,
         GrossAmountInSecurityCcy = sig * inOutPriceTrCcy,
-        NetAmountInPortfolioCcy = sig * (inOutPriceTrCcy - transactionFees) * (inOutPriceSubCcy / inOutPriceTrCcy),
+        NetAmountInPortfolioCcy = netAmountInPortfolioCcy,
         NetAmountInSecurityCcy = sig * (inOutPriceTrCcy - transactionFees),
         OperationType = operationType,
         PriceInSecurityCcy = inOutPriceTrCcy / quantity,
