@@ -140,6 +140,10 @@ CashMovement CreateCashMovement(
     TransactionType transactionType = MapTransactionType(lcat, ttyp);
     OperationType operationType = MapOperationType(mgroup, mtyp);
     double sig = operationType == OperationType.Purchase ? -1 : 1;
+    var netAmountInPortfolioCcy = inOutPriceTrCcy != 0
+        ? sig * (inOutPriceTrCcy - transactionFees) * (inOutPriceSubCcy / inOutPriceTrCcy)
+        : 0;
+
     return new CashMovement
     {
         CashId = targetAccountId,
@@ -150,7 +154,7 @@ CashMovement CreateCashMovement(
         GrossAmountInPortfolioCcy = sig * inOutPriceSubCcy,
         GrossAmountInSecurityCcy = sig * inOutPriceTrCcy,
         MovementCode = movemcode,
-        NetAmountInPortfolioCcy = sig * (inOutPriceTrCcy - transactionFees) * (inOutPriceSubCcy / inOutPriceTrCcy),
+        NetAmountInPortfolioCcy = netAmountInPortfolioCcy,
         NetAmountInSecurityCcy = sig * (inOutPriceTrCcy - transactionFees),
         PortfolioId = portfolioId,
         PriceInSecurityCcy = (inOutPriceTrCcy - transactionFees) / quantity,
