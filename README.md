@@ -1,2 +1,2 @@
 # PmsMacros
-Set of macros for our PMS
+Set of macros for FundProcess PMS
