@@ -61,8 +61,10 @@ var targetInstrumentStream = targetSecurityStream
     .WhereCorrelated($"{TaskName}: keep known security instrument types", i => i != null)
     .EfCoreSave($"{TaskName}: save target instrument by isin, then by internal code", o => o.SeekOn(i => i.Isin).AlternativelySeekOn(i => i.InternalCode));
 
-targetSecurityStream = targetCashStream.Select($"{TaskName}: cast cash back to Security", i => i as Security)
-    .Union($"{TaskName}: put cash and instrument together", targetInstrumentStream.Select($"{TaskName}: cast instrument back to Security", i => i as Security));
+// targetSecurityStream = targetCashStream.Select($"{TaskName}: cast cash back to Security", i => i as Security)
+//     .Union($"{TaskName}: put cash and instrument together", targetInstrumentStream.Select($"{TaskName}: cast instrument back to Security", i => i as Security));
+targetSecurityStream = targetCashStream
+    .Union($"{TaskName}: put cash and instrument together", targetInstrumentStream, i => i as Security, i => i as Security);
 
 var portfolioCompositionStream = posFileStream
     .CorrelateToSingle($"{TaskName}: get composition portfolio", portfolioStream, (l, r) => new PortfolioComposition { Date = l.PosDate.Value, PortfolioId = r.Id })
