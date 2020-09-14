@@ -18,12 +18,12 @@ var rbcTransactionFileDefinition = FlatFileDefinition.Create(i => new
 }).IsColumnSeparated(',');
 
 var transFileStream = FileStream
-    .CrossApplyTextFile($"{TaskName}: parse transaction file", rbcTransactionFileDefinition)
-    .SetForCorrelation($"{TaskName}: prepare correlation");
+    .CrossApplyTextFile($"{TaskName}: Parse transaction file", rbcTransactionFileDefinition)
+    .SetForCorrelation($"{TaskName}: Prepare correlation");
 
 var brokerStream = transFileStream
-    .Distinct($"{TaskName}: exclude duplicate brokers", i => i.CounterpartyBrokerCode)
-    .Select($"{TaskName}: create brokers", i => new Company
+    .Distinct($"{TaskName}: Exclude duplicate brokers", i => i.CounterpartyBrokerCode)
+    .Select($"{TaskName}: Create brokers", i => new Company
     {
         InternalCode = i.CounterpartyBrokerCode,
         Name = i.CounterpartyBrokerDescription
@@ -31,12 +31,12 @@ var brokerStream = transFileStream
     .EfCoreSave($"{TaskName}: Insert brokers", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 var euroCurrency = ProcessContextStream
-    .EfCoreSelect($"{TaskName}: get euroCurrency", i => i.Set<Currency>().Where(c => c.IsoCode == "EUR"))
-    .EnsureSingle($"{TaskName}: ensures only one euro currency");
+    .EfCoreSelect($"{TaskName}: Get euroCurrency", i => i.Set<Currency>().Where(c => c.IsoCode == "EUR"))
+    .EnsureSingle($"{TaskName}: Ensures only one euro currency");
 
 var counterpartyRelationshipStream = brokerStream
-    .Select($"{TaskName}: link currency to relationship", euroCurrency, (l, r) => new { BrokerId = l.Id, CurrencyId = r.Id })
-    .EfCoreLookup($"{TaskName}: get related relationship in db", o => o
+    .Select($"{TaskName}: Link currency to relationship", euroCurrency, (l, r) => new { BrokerId = l.Id, CurrencyId = r.Id })
+    .EfCoreLookup($"{TaskName}: Get related relationship in db", o => o
         .LeftJoinEntity(i => i.BrokerId, (CounterpartyRelationship i) => i.EntityId, (l, r) => r ?? new CounterpartyRelationship
         {
             CounterpartyType = CounterpartyType.Broker,
@@ -49,17 +49,26 @@ var counterpartyRelationshipStream = brokerStream
     .EfCoreSaveCorrelated($"{TaskName}: Insert relationship", o => o.DoNotUpdateIfExists());
 
 var transactionToSaveStream = transFileStream
-    .EfCoreLookup($"{TaskName}: get related portfolio", o => o.LeftJoinEntity(i => i.FundCode, (Portfolio i) => i.InternalCode, (l, r) => new { FileRow = l, Portfolio = r }).CacheFullDataset())
-    .Where($"{TaskName}: exclude transaction unfound portfolio", i => i.Portfolio != null)
-    .CorrelateToSingle($"{TaskName}: get correlated relationship", counterpartyRelationshipStream, (l, r) => new { l.FileRow, l.Portfolio, Relationship = r });
+    .Distinct($"{TaskName}: Distinct",
+        i => new { i.FileName, i.TradeDate, i.CounterpartyBrokerCode, i.ContractNumber },
+        o => o
+            .ForProperty(i => i.Quantity, DistinctAggregator.Last)
+            .ForProperty(i => i.FeesAmountInTransactionCcy, DistinctAggregator.Last)
+            .ForProperty(i => i.CommissionAmount, DistinctAggregator.Last)
+            .ForProperty(i => i.TradeAmount, DistinctAggregator.Last) //!!!!!!!!!!!!!!!!!!!
+            .ForProperty(i => i.Premium, DistinctAggregator.Last) //!!!!!!!!!!!!!!!!!!!!
+            )
+    .EfCoreLookup($"{TaskName}: Get related portfolio", o => o.LeftJoinEntity(i => i.FundCode, (Portfolio i) => i.InternalCode, (l, r) => new { FileRow = l, Portfolio = r }).CacheFullDataset())
+    .Where($"{TaskName}: Exclude transaction unfound portfolio", i => i.Portfolio != null)
+    .CorrelateToSingle($"{TaskName}: Get correlated relationship", counterpartyRelationshipStream, (l, r) => new { l.FileRow, l.Portfolio, Relationship = r });
 
 var relationshipLinkStream = transactionToSaveStream
-    .Distinct($"{TaskName}: distinct portfolio/broker relationship", i => new
+    .Distinct($"{TaskName}: Distinct portfolio/broker relationship", i => new
     {
         PortfolioId = i.Portfolio.Id,
         RelationshipId = i.Relationship.Id
     })
-    .Select($"{TaskName}: create relationship link", i => new RelationshipPortfolio
+    .Select($"{TaskName}: Create relationship link", i => new RelationshipPortfolio
     {
         PortfolioId = i.Portfolio.Id,
         RelationshipId = i.Relationship.Id
@@ -67,8 +76,8 @@ var relationshipLinkStream = transactionToSaveStream
     .EfCoreSaveCorrelated($"{TaskName}: Insert relationship link", o => o.DoNotUpdateIfExists());
 
 var savedTransactionStream = transactionToSaveStream
-    .EfCoreLookup($"{TaskName}: get target option by internal code", o => o.LeftJoinEntity(i => i.FileRow.OptionRbcdisCode, (Option i) => i.InternalCode, (l, r) => new { l.FileRow, l.Portfolio, l.Relationship, TargetOption = r }).CacheFullDataset())
-    .Where($"{TaskName}: exclude movements with target option not found", i => i.TargetOption != null) // TODO: Check why not everything matches
+    .EfCoreLookup($"{TaskName}: Get target option by internal code", o => o.LeftJoinEntity(i => i.FileRow.OptionRbcdisCode, (Option i) => i.InternalCode, (l, r) => new { l.FileRow, l.Portfolio, l.Relationship, TargetOption = r }).CacheFullDataset())
+    .Where($"{TaskName}: Exclude movements with target option not found", i => i.TargetOption != null) // TODO: Check why not everything matches
     .Select($"{TaskName}: Create option transaction", i => CreateSecurityTransaction(
         i.Portfolio.Id,
         i.TargetOption.Id,
