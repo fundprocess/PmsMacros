@@ -1,5 +1,6 @@
-public class BdlSecPosNode // /response/response/cont/pos/Secpos
-{ 
+#region Setup file definition
+class BdlSecPosNode // /response/response/cont/pos/Secpos
+{
     public string FileName { get; set; }
     public string ContId { get; set; } // /response/response/cont/@ContId
     public string SecurityCode { get; set; } // <SecurityCode>24493476</SecurityCode>
@@ -9,7 +10,7 @@ public class BdlSecPosNode // /response/response/cont/pos/Secpos
     public double TotRefCcy { get; set; } // <TotRefCcy>171696.00</TotRefCcy>
     public string PosId { get; set; }
 }
-public class BdlSecBaseNode // <Secbase>
+class BdlSecBaseNode // <Secbase>
 {
     public string SecurityCode { get; set; } // <SecurityCode>13555251</SecurityCode>
     public string Isin { get; set; } // <Isin>FR0010400762</Isin>
@@ -23,23 +24,20 @@ public class BdlSecBaseNode // <Secbase>
     public string InstrCcy { get; set; } // <InstrCcy>EUR</InstrCcy>
     public string ValFreq { get; set; } // <ValFreq>7310</ValFreq> 7310=daily, 7312=weekly
     public string MifidRisk { get; set; } // <MifidRisk>Risk Level 4 (04)</MifidRisk>
+    public string EurAmStyle { get; set; }   // <EurAmStyle>AMERICAN</EurAmStyle>
+    public string UnderlAsset { get; set; }   // <UnderlAsset>US4642876555</UnderlAsset>
+    public double? ContrSize { get; set; }   // <ContrSize>100</ContrSize>
+    public double? StrikePrice { get; set; }   // <StrikePrice>145</StrikePrice>
+    public string EconSector { get; set; }   // <EconSector>84</EconSector>
+
 }
-public class BdlCustidNode
+class BdlCustidNode
 {
     public string ContId { get; set; } // <cont ContId="02812601.1001">
     public string Domicile { get; set; } // <Domicile>MC</Domicile>
     public string DefaultCcy { get; set; } // <DefaultCcy>EUR</DefaultCcy>
 }
-public class BdlCashTransactionNode // /response/response/cont/pos/Cashtr
-{
-    public string ContId { get; set; } // /response/response/cont/@ContId
-    public string Iban { get; set; }// <Iban>LU230080291389002001</Iban>
-    public int OrderNr { get; set; }// <OrderNr>236248234</OrderNr>
-    public int OrdTypId { get; set; }// <OrdTypId>140024</OrdTypId>
-    public string BookText { get; set; }// <BookText>Redemption (Funds) Equity funds</BookText>
-    public double NetAmount { get; set; }// <NetAmount>784250.40</NetAmount>
-}
-public class BdlCashposNode // /response/response/cont/pos/Cashpos
+class BdlCashposNode // /response/response/cont/pos/Cashpos
 {
     public string ContId { get; set; } // /response/response/cont/@ContId
     public string Iban { get; set; } // <Iban>LU200080281260102005</Iban>
@@ -50,7 +48,7 @@ public class BdlCashposNode // /response/response/cont/pos/Cashpos
     public string PosId { get; internal set; }
     public string FileName { get; set; }
 }
-public class BdlFileDefinition : XmlFileDefinition
+class BdlFileDefinition : XmlFileDefinition
 {
     public BdlFileDefinition()
     {
@@ -67,7 +65,12 @@ public class BdlFileDefinition : XmlFileDefinition
             SecurityCode = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/SecurityCode"),
             Telekurs = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Telekurs"),
             ValFreq = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/ValFreq"),
-            Wkn = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Wkn")
+            EurAmStyle = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EurAmStyle"),
+            UnderlAsset = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/UnderlAsset"),
+            Wkn = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Wkn"),
+            ContrSize = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/ContrSize"),
+            StrikePrice = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/StrikePrice"),
+            EconSector = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EconSector")
         }));
         this.AddNodeDefinition(XmlNodeDefinition.Create("secpos", "/response/response/cont/pos/Secpos", i => new BdlSecPosNode
         {
@@ -99,7 +102,7 @@ public class BdlFileDefinition : XmlFileDefinition
         }));
     }
 }
-
+#endregion
 
 #region get sources
 
@@ -107,57 +110,34 @@ var nodesStream = FileStream
     .CrossApplyXmlFile($"{TaskName}: parse input file", new BdlFileDefinition());
 
 var fileTargetSecuritiesStream = nodesStream
-    .XmlNodeOfType<BdlSecBaseNode>($"{TaskName}: list only target securities", "secbase")
+    .XmlNodeOfType<BdlSecBaseNode>($"{TaskName}: list only target securities")
     .SetForCorrelation($"{TaskName}: correlate target securities")
     .Distinct($"{TaskName}: distinct target securities", i => i.SecurityCode);
 
 var fileSecurityPositionsStream = nodesStream
-    .XmlNodeOfType<BdlSecPosNode>($"{TaskName}: list only securities positions", "secpos")
+    .XmlNodeOfType<BdlSecPosNode>($"{TaskName}: list only securities positions")
     .SetForCorrelation($"{TaskName}: correlate securities positions")
-    .Aggregate($"{TaskName}: sum security positions duplicates within a file",
+    .Distinct($"{TaskName}: sum security positions duplicates within a file",
         i => new { i.FileName, i.AssBalDate, i.ContId, i.SecurityCode },
-        i => new BdlSecPosNode(),
-        (a, v) =>
-        {
-            a.AssetQty += v.AssetQty;
-            a.TotSec += v.TotSec;
-            a.TotRefCcy += v.TotRefCcy;
-            return a;
-        })
-    .Select($"{TaskName}: get security position aggregation",
-        i =>
-        {
-            i.FirstValue.AssetQty = i.Aggregation.AssetQty;
-            i.FirstValue.TotSec = i.Aggregation.TotSec;
-            i.FirstValue.TotRefCcy = i.Aggregation.TotRefCcy;
-            return i.FirstValue;
-        })
+        o => o
+            .ForProperty(a => a.AssetQty, DistinctAggregator.Sum)
+            .ForProperty(a => a.TotSec, DistinctAggregator.Sum)
+            .ForProperty(a => a.TotRefCcy, DistinctAggregator.Sum))
     .Distinct($"{TaskName}: exclude security positions duplicates", i => new { i.AssBalDate, i.ContId, i.SecurityCode });
 
 var fileCashPositionsStream = nodesStream
-    .XmlNodeOfType<BdlCashposNode>($"{TaskName}: list only cash positions", "cashpos")
+    .XmlNodeOfType<BdlCashposNode>($"{TaskName}: list only cash positions")
     .SetForCorrelation($"{TaskName}: correlate cash positions")
-    .Aggregate($"{TaskName}: sum cash positions duplicates within a file",
+    .Distinct($"{TaskName}: sum cash positions duplicates within a file",
         i => new { i.FileName, i.PosBalDate, i.ContId, i.Iban },
-        i => new BdlCashposNode(),
-        (a, v) =>
-        {
-            a.PosBalRefCcy += v.PosBalRefCcy;
-            a.AccrInt += v.AccrInt;
-            return a;
-        })
-    .Select($"{TaskName}: get cash position aggregation",
-        i =>
-        {
-            i.FirstValue.PosBalRefCcy = i.Aggregation.PosBalRefCcy;
-            i.FirstValue.AccrInt = i.Aggregation.AccrInt;
-            return i.FirstValue;
-        })
+        o => o
+            .ForProperty(a => a.PosBalRefCcy, DistinctAggregator.Sum)
+            .ForProperty(a => a.AccrInt, DistinctAggregator.Sum))
     .Distinct($"{TaskName}: exclude cash positions duplicates", i => new { i.PosBalDate, i.ContId, i.Iban })
     .Fix($"{TaskName}: correct cash fields", o => o.FixProperty(i => i.Iban).IfNullWith(i => $"BDL_{i.ContId}_{i.AssetCcy}"));
 
 var filePortfoliosStream = nodesStream
-    .XmlNodeOfType<BdlCustidNode>($"{TaskName}: list only portfolios", "custid")
+    .XmlNodeOfType<BdlCustidNode>($"{TaskName}: list only portfolios")
     .SetForCorrelation($"{TaskName}: correlate portfolios")
     .Distinct($"{TaskName}: distinct portfolio", i => i.ContId);
 
@@ -215,7 +195,7 @@ var targetCashStream = fileCashPositionsStream
     .EfCoreSave($"{TaskName}: save target cash", o => o.SeekOn(i => i.Iban).DoNotUpdateIfExists());
 
 var cashPositionToSaveStream = fileCashPositionsStream
-    .CorrelateToSingle($"{TaskName}: lookup target cash", targetCashStream, (l, r) => new { FromFile = l, Cash = r })
+    .Lookup($"{TaskName}: lookup target cash", targetCashStream, i => i.Iban, i => i.Iban, (l, r) => new { FromFile = l, Cash = r })
     .Lookup($"{TaskName}: lookup cash portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Cash, Portfolio = r })
     .CorrelateToSingle($"{TaskName}: lookup cash portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Cash, l.Portfolio, r.PortfolioComposition })
     .Select($"{TaskName}: create cash pos", i => new Position
@@ -232,13 +212,14 @@ var cashPositionToSaveStream = fileCashPositionsStream
 
 var targetSecurityInstrumentStream = fileTargetSecuritiesStream
     .Distinct($"{TaskName}: distinct target positions security", i => i.Isin ?? i.SecurityCode)
-    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.InstrCcy, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, CurrencyId = r?.Id })
-    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.InstrType, i.Isin, i.SecurityCode, i.SecName, i.Domicile, i.CurrencyId, i.ValFreq) as SecurityInstrument)
+    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.InstrCcy, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CurrencyId = r?.Id })
+    .LookupCountry($"{TaskName}: get related country for target security", l => l.Domicile, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.CurrencyId, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CountryId = r?.Id })
+    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.InstrType, i.Isin, i.SecurityCode, i.SecName, i.Domicile, i.CurrencyId, i.ValFreq, i.CountryId, i.EurAmStyle, i.UnderlAsset, i.StrikePrice, i.ContrSize) as SecurityInstrument)
     .WhereCorrelated($"{TaskName}: keep known security instrument types", i => i != null)
     .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.Isin).AlternativelySeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 var instrumentPositionsToSaveStream = fileSecurityPositionsStream
-    .CorrelateToSingle($"{TaskName}: get related target security", targetSecurityInstrumentStream, (l, r) => new { FromFile = l, Security = r })
+    .Lookup($"{TaskName}: lookup related target security", targetSecurityInstrumentStream, i => i.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l, Security = r })
     .Lookup($"{TaskName}: lookup security portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Security, Portfolio = r })
     .CorrelateToSingle($"{TaskName}: lookup security portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Security, l.Portfolio, r.PortfolioComposition })
     .Select($"{TaskName}: create security pos", i => new Position
@@ -256,11 +237,14 @@ var savedPositions = cashPositionToSaveStream
     .EfCoreSave($"{TaskName}: save position", o => o.SeekOn(i => new { i.SecurityId, i.PortfolioCompositionId }));
 return FileStream.WaitWhenDone($"{TaskName}: wait end of all save", savedPositions);
 
-Security CreateTargetSecurity(int instrType, string isin, string securityCode, string name, string domicile, int? currencyId, string valFreq)
+Security CreateTargetSecurity(int instrType, string isin, string securityCode, string name, string domicile, int? currencyId, string valFreq, int? countryId, string eurAmStyle, string underlAsset, double? strikePrice, double? contractSize)
 {
     Security security = null;
     switch (instrType)
     {
+        case 310:
+            security = new Option();
+            break;
         case 805:
         case 810:
         case 820:
@@ -282,17 +266,34 @@ Security CreateTargetSecurity(int instrType, string isin, string securityCode, s
             security = new Equity();
             break;
         default:
-            break;
+            throw new Exception($"{instrType}: unknown instrument type. (isin: {isin}, name: {name})");
     }
 
     if (security == null) return null;
     security.Name = name;
     security.ShortName = name.Truncate(MaxLengths.ShortName);
     if (security is OptionFuture der)
+    {
         der.UnderlyingIsin = isin;
-    else if (security is SecurityInstrument securityInstrument)
+    }
+    if (security is SecurityInstrument securityInstrument)
+    {
         securityInstrument.Isin = isin;
-    // security.CountryCode = domicile;
+    }
+    if (security is RegularSecurity regularSecurity)
+    {
+        regularSecurity.CountryId = countryId;
+    }
+    if (security is Option option)
+    {
+        option.Type = eurAmStyle == "AMERICAN" ? OptionType.American : OptionType.European;
+        option.PutCall = name.Contains("put", System.StringComparison.InvariantCultureIgnoreCase) ? PutCall.Put : PutCall.Call;
+    }
+    if (security is StandardDerivative standardDerivative)
+    {
+        standardDerivative.StrikePrice = strikePrice;
+        standardDerivative.ContractSize = contractSize;
+    }
     security.CurrencyId = currencyId;
     security.InternalCode = securityCode;
     return security;
