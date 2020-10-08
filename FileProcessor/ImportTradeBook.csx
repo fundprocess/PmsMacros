@@ -18,38 +18,30 @@ var tradeFileStream = FileStream
 //Saving trade books: one per portfolio per date
 //--------------------------
 var tradeBookStream = tradeFileStream
-    .Distinct($"{TaskName}: distinct on trade books", i => new { i.PortfolioCode, i.Date }, true)
-    .LookupPortfolio($"{TaskName}: lookup for portfolio", i => i.PortfolioCode, (l, r) => new { FileRow = l, Portfolio = r })
-    .Select($"{TaskName}: create trade books", i => new TradeBook { PortfolioId = i.Portfolio?.Id ?? 0, Date = i.FileRow.Date })
-    .EfCoreSave($"{TaskName}: save trade books", o => o.SeekOn(i => new { i.PortfolioId, i.Date }));
+    .Distinct($"{TaskName}: distinct on trade books", i => new { i.PortfolioCode, i.Date })
+    .LookupPortfolio($"{TaskName}: lookup for portfolio and create tradebook", i =>i.PortfolioCode, 
+            (l, r) => new TradeBook { PortfolioId = r.Id, Date = l.Date } )
+    .EfCoreSave($"{TaskName}: save trade books", o => o.SeekOn(i => new { i.PortfolioId, i.Date }).DoNotUpdateIfExists());
 
 //--------------------------
 //Saving trades
 //--------------------------
 //Get all securities in a dictionary
-var getSecurityId = ProcessContextStream
-    .EfCoreSelect($"{TaskName}: get securities dictionary", i => i.Set<Security>())
-    .ToDictionary(i=>i.InternalCode,i=>i.Id);
-
-//Get all relationships in a dictionary
-var getRelationshipId = ProcessContextStream
-    .EfCoreSelect($"{TaskName}: get relationships dictionary", i => i.Set<RoleRelationship>().Include(i=>i.Entity)
-                        .Select(r=>new {EntityCode = r.Entity.InternalCode, RelationshipId = r.Id}))
-    .GroupBy(i => i.EntityCode).Select(g => g.First())
-    .ToDictionary(i=>i.EntityCode,i=>i.RelationshipId);
 
 var tradesStream = tradeFileStream
-    .CorrelateToSingle($"{TaskName}: get related tradebook", tradeBookStream, (l, r) => new { FileRow = l, Tradebook = r })
-    //.LookupSecurity($"{TaskName}: get related security", i => i.SecurityCode, (l, r) => new { FileRow = l, Security = r })
+    .CorrelateToSingle($"{TaskName}: get related tradebook", tradeBookStream, (l, r) => new { FileRow = l, TradeBook = r })
+    .EfCoreLookup($"{TaskName}: get related security", o=> o.LeftJoinEntity(i=>i.FileRow.SecurityCode,(Security s)=>s.InternalCode,
+                            (l, r) => new { l.FileRow, l.TradeBook , Security = r }).CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get related PM", o=> o.LeftJoinEntity(i=>i.FileRow.PlacedBy,(Person p) =>p.InternalCode,
+                            (l,r) => new {FileRow = l.FileRow, Security= l.Security, Person = r, l.TradeBook }))
     .Select($"{TaskName}: Create trades", i => new Trade 
     { 
         TradeBookId = i.TradeBook.Id,
-        Isin = i.FileRow.ISIN,
-        SecurityId = getSecurityId[i.FileRow.SecurityCode],
+        SecurityId =i.Security.Id,
         BuySell  = string.Equals(i.FileRow.BuySell, "buy", StringComparison.InvariantCultureIgnoreCase) ? BuySell.Buy : BuySell.Sell,
         Quantity = i.FileRow.Quantity,
         AmountInPtfCcy = i.FileRow.AmountInPtfCcy,
-        PlacedById = getRelationshipId[i.FileRow.PlaceBy]
-    })
+        PlacedById = i.Person.Id
+    });
 
-return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", tradeBookStream, tradesStream);
+return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", tradesStream);
