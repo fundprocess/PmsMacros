@@ -48,7 +48,7 @@ var indexStream = indexRowStream
         Code = row.Index,
         Name = row.Index
     })
-    .EfCoreSave($"{TaskName}: save index", o => o.SeekOn(i => i.Code));
+    .EfCoreSave($"{TaskName}: save index", o => o.SeekOn(i => i.Code).DoNotUpdateIfExists());
 var savedIndexHistoricalValueStream = indexRowStream
     .Distinct($"{TaskName}: Exclude doubles for a code and a date", i => new { Index = i.Index.ToLower(), i.Date }, true)
     .CorrelateToSingle($"{TaskName}: Lookup related index", indexStream, (l, r) => new
@@ -79,4 +79,4 @@ var savedFxRateStream = rowStream
     })
     .EfCoreSave($"{TaskName}: Save fx rate", o => o.SeekOn(i => new { i.Date, i.CurrencyToId }));
 #endregion
-FileStream.WaitWhenDone($"{TaskName}: wait till everything is processed", savedIndexHistoricalValueStream, savedFxRateStream)
+return FileStream.WaitWhenDone($"{TaskName}: wait till everything is processed", savedIndexHistoricalValueStream, savedFxRateStream);
