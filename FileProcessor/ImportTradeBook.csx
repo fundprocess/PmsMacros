@@ -26,8 +26,8 @@ var tradeBookStream = tradeFileStream
 //--------------------------
 //Saving trades
 //--------------------------
-//Get all securities in a dictionary
-
+var deletedScopeStream = tradeBookStream.EfCoreDelete($"{TaskName}: delete existing trades",
+        (TradeBook tradeBook, Trade trade) => trade.TradeBookId == tradeBook.Id);
 var tradesStream = tradeFileStream
     .CorrelateToSingle($"{TaskName}: get related tradebook", tradeBookStream, (l, r) => new { FileRow = l, TradeBook = r })
     .EfCoreLookup($"{TaskName}: get related security", o=> o.LeftJoinEntity(i=>i.FileRow.SecurityCode,(Security s)=>s.InternalCode,
@@ -42,6 +42,8 @@ var tradesStream = tradeFileStream
         Quantity = i.FileRow.Quantity,
         AmountInPtfCcy = i.FileRow.AmountInPtfCcy,
         PlacedById = i.Person.Id
-    });
+    })
+    .WaitWhenDone($"{TaskName}: wait for related trades to be deleted", deletedScopeStream)
+    .EfCoreSave($"{TaskName}: Save trades");
 
 return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", tradesStream);
