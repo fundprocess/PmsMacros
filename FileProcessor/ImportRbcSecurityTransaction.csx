@@ -27,9 +27,17 @@ var transFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse transaction file", rbcTransactionFileDefinition);
 
 var savedTransactionStream = transFileStream
-    .EfCoreLookup($"{TaskName}: get related portfolio", o => o.LeftJoinEntity(i => i.FundCode, (Portfolio i) => i.InternalCode, (l, r) => new { FileRow = l, Portfolio = r }).CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get related portfolio", o => o
+        .Set<Portfolio>()
+        .On(i => i.FundCode, i => i.InternalCode)
+        .Select((l, r) => new { FileRow = l, Portfolio = r })
+        .CacheFullDataset())
     .Where($"{TaskName}: exclude transaction with unfound portfolio", i => i.Portfolio != null)
-    .EfCoreLookup($"{TaskName}: get target security by isin", o => o.LeftJoinEntity(i => i.FileRow.IsinCode, (SecurityInstrument i) => i.Isin, (l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r }).CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get target security by isin", o => o
+        .Set<SecurityInstrument>()
+        .On(i => i.FileRow.IsinCode, i => i.Isin)
+        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r })
+        .CacheFullDataset())
     .Where($"{TaskName}: exclude movements with target security not found", i => i.TargetSecurity != null) // TODO: check why not every security matches
     .Select($"{TaskName}: Create security transaction", i => CreateSecurityTransaction(
         i.Portfolio.Id,

@@ -46,17 +46,17 @@ var fileRowStream = FileStream
         },
     })
     .EfCoreLookup($"{TaskName}: get related portfolio", o => o
-        .LeftJoinEntity(
-            i => i.FileRow.SubFundCode, 
-            (Portfolio i) => i.InternalCode, 
-            (l, r) => new
-                {
-                    l.FileRow,
-                    l.Classification1,
-                    l.Classification2,
-                    l.Classification3,
-                    Portfolio = r
-                }))
+        .Set<Portfolio>()
+        .On(i => i.FileRow.SubFundCode, i => i.InternalCode)
+        .Select((l, r) => new
+        {
+            l.FileRow,
+            l.Classification1,
+            l.Classification2,
+            l.Classification3,
+            Portfolio = r
+        })
+        .CacheFullDataset())
     .Where($"{TaskName}: Exclude account balance with no related portfolio", i => i.Portfolio != null);
 
 var deletedScopeStream = fileRowStream
@@ -75,8 +75,9 @@ var deletedScopeStream = fileRowStream
         MinDate: i.Aggregation.MinDate,
         MaxDate: i.Aggregation.MaxDate
     ))
-    .EfCoreDelete($"{TaskName}: delete existing data in the scope",
-        ((int PortfolioId, DateTime MinDate, DateTime MaxDate) i, AccountBalance a) => a.PortfolioId == i.PortfolioId && a.Date >= i.MinDate && a.Date <= i.MaxDate)
+    .EfCoreDelete($"{TaskName}: delete existing data in the scope", o => o
+        .Set<AccountBalance>()
+        .Where((i, a) => a.PortfolioId == i.PortfolioId && a.Date >= i.MinDate && a.Date <= i.MaxDate))
     .Select($"{TaskName}: change scope into object (technical reason)", i => new object());
 
 #region Classifications

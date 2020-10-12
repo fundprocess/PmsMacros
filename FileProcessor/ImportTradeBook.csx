@@ -26,14 +26,22 @@ var tradeBookStream = tradeFileStream
 //--------------------------
 //Saving trades
 //--------------------------
-var deletedScopeStream = tradeBookStream.EfCoreDelete($"{TaskName}: delete existing trades",
-        (TradeBook tradeBook, Trade trade) => trade.TradeBookId == tradeBook.Id);
+var deletedScopeStream = tradeBookStream
+    .EfCoreDelete($"{TaskName}: delete existing trades", o => o
+        .Set<Trade>()
+        .Where((tradeBook,  trade) => trade.TradeBookId == tradeBook.Id));
 var tradesStream = tradeFileStream
     .CorrelateToSingle($"{TaskName}: get related tradebook", tradeBookStream, (l, r) => new { FileRow = l, TradeBook = r })
-    .EfCoreLookup($"{TaskName}: get related security", o=> o.LeftJoinEntity(i=>i.FileRow.SecurityCode,(Security s)=>s.InternalCode,
-                            (l, r) => new { l.FileRow, l.TradeBook , Security = r }).CacheFullDataset())
-    .EfCoreLookup($"{TaskName}: get related PM", o=> o.LeftJoinEntity(i=>i.FileRow.PlacedBy,(Person p) =>p.InternalCode,
-                            (l,r) => new {FileRow = l.FileRow, Security= l.Security, Person = r, l.TradeBook }))
+    .EfCoreLookup($"{TaskName}: get related security", o=> o
+        .Set<Security>()
+        .On(i=>i.FileRow.SecurityCode, s=>s.InternalCode)
+        .Select((l, r) => new { l.FileRow, l.TradeBook , Security = r })
+        .CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get related PM", o=> o
+        .Set<Person>()
+        .On(i => i.FileRow.PlacedBy, p => p.InternalCode)
+        .Select((l,r) => new {FileRow = l.FileRow, Security= l.Security, Person = r, l.TradeBook })
+        .CacheFullDataset())
     .Select($"{TaskName}: Create trades", i => new Trade 
     { 
         TradeBookId = i.TradeBook.Id,

@@ -11,7 +11,7 @@ var efaMovTransactionFileDefinition = FlatFileDefinition.Create(i => new
     Icy = i.ToColumn("Icy"),
     Mgroup = i.ToColumn("mgroup"),
     Movemcode = i.ToColumn("movemcode"),
-    Mtyp = i.ToColumn("mtyp"),
+    Mtyp = i.ToColumn("mtyp"), 
     Quantity = i.ToNumberColumn<double>("Quantity", "."),
     SFund = i.ToColumn("S_fund"),
     TransactionFees = i.ToNumberColumn<double>("Transaction_fees", "."),
@@ -39,14 +39,18 @@ var brokerStream = movFileStream
 
 var movementsWithPortfolioStream = movFileStream
     .EfCoreLookup($"{TaskName}: get related portfolio", o => o
-        .LeftJoinEntity(i => i.SFund, (Portfolio i) => i.InternalCode, (l, r) => new { FileRow = l, Portfolio = r })
+        .Set<Portfolio>()
+        .On(i => i.SFund, i => i.InternalCode)
+        .Select((l, r) => new { FileRow = l, Portfolio = r })
         .CacheFullDataset())
     .Where($"{TaskName}: exclude movement unfound portfolio", i => i.Portfolio != null);
 
 var savedSecurityTransactionStream = movementsWithPortfolioStream
     .Where($"{TaskName}: keep security rows only", i => !string.Equals(i.FileRow.Icat, "tres", StringComparison.InvariantCultureIgnoreCase) && !string.Equals(i.FileRow.Icat, "cpon", StringComparison.InvariantCultureIgnoreCase))
     .EfCoreLookup($"{TaskName}: get target security by internal code", o => o
-        .LeftJoinEntity(i => i.FileRow.InstrCode, (SecurityInstrument i) => i.InternalCode, (l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r })
+        .Set<SecurityInstrument>()
+        .On(i => i.FileRow.InstrCode, i => i.InternalCode)
+        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r })
         .CacheFullDataset())
     .Where($"{TaskName}: exclude movements with target security not found", i => i.TargetSecurity != null)
     .CorrelateToSingle($"{TaskName}: get broker by internal code", brokerStream, (l, r) => new { l.FileRow, l.Portfolio, l.TargetSecurity, Broker = r })
@@ -79,7 +83,9 @@ var savedSecurityTransactionStream = movementsWithPortfolioStream
 var savedCashMovementStream = movementsWithPortfolioStream
     .Where($"{TaskName}: keep cash rows only", i => string.Equals(i.FileRow.Icat, "tres", StringComparison.InvariantCultureIgnoreCase) || string.Equals(i.FileRow.Icat, "cpon", StringComparison.InvariantCultureIgnoreCase))
     .EfCoreLookup($"{TaskName}: get underlying security by isin", o => o
-        .LeftJoinEntity(i => i.FileRow.Isin, (SecurityInstrument i) => i.Isin, (l, r) => new { l.FileRow, l.Portfolio, UnderlyingSecurity = r })
+        .Set<SecurityInstrument>()
+        .On(i => i.FileRow.Isin, i => i.Isin)
+        .Select((l, r) => new { l.FileRow, l.Portfolio, UnderlyingSecurity = r })
         .CacheFullDataset())
     .LookupCurrency($"{TaskName}: get currency", i => i.FileRow.Icy, (l, r) => new { l.FileRow, l.Portfolio, l.UnderlyingSecurity, Currency = r })
     .Select($"{TaskName}: Create cash movement", i => CreateCashMovement(

@@ -30,12 +30,16 @@ var classificationsOfSecurity = ProcessContextStream.EfCoreSelect("Get every sec
         ClassificationCode = GetClassification(s),
         ClassificationTypeId = t.Id
     })
-    .EfCoreLookup("Get related classification Id", o => o.LeftJoinEntity(i => i.ClassificationCode, (SecurityClassification sc) => sc.Code, (l, r) => new ClassificationOfSecurity
-    {
-        SecurityId = l.SecurityId,
-        ClassificationId = r.Id,
-        ClassificationTypeId = l.ClassificationTypeId
-    }))
+    .EfCoreLookup("Get related classification Id", o => o
+        .Set<SecurityClassification>()
+        .On(i => i.ClassificationCode, sc => sc.Code)
+        .Select((l, r) => new ClassificationOfSecurity
+        {
+            SecurityId = l.SecurityId,
+            ClassificationId = r.Id,
+            ClassificationTypeId = l.ClassificationTypeId
+        })
+        .CacheFullDataset())
     .EfCoreSave("Save security classifications");
 
 ProcessContextStream.WaitWhenDone("wait till everything is done", classificationsOfSecurity)
