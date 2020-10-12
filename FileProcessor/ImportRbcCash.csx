@@ -16,7 +16,7 @@ var rbcCashFileDefinition = FlatFileDefinition.Create(i => new
     FundWebCode = i.ToColumn("FUND WEB CODE"),
     Price = i.ToNumberColumn<double?>("PRICE", "."),
     Quantity = i.ToNumberColumn<double?>("QUANTITY", "."),
-    Reversal = i.ToBooleanColumn("REVERSAL", "Y", "N"),
+    Reversal = i.ToBooleanColumn("REVERSAL", "Y", "N"), 
     Taxes = i.ToNumberColumn<double?>("TAXES", "."),
     TradeDate = i.ToOptionalDateColumn("TRADE DATE", "yyyyMMdd"),
     TransactionId = i.ToColumn("TRANSACTION ID"),
@@ -34,11 +34,23 @@ var savedCashMovementStream = FileStream
         FundCode = i.FundWebCode.Substring(0, 6),
         // LineCode = $"{i.FundWebCode}-{i.TransactionId}-{i.AccountCcy}-{i.Reversal}"
     })
-    .EfCoreLookup($"{TaskName}: get related portfolio", o => o.LeftJoinEntity(i => i.FundCode, (Portfolio i) => i.InternalCode, (l, r) => new { l.FileRow, l.Iban, Portfolio = r }).CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get related portfolio", o => o
+        .Set<Portfolio>()
+        .On(i => i.FundCode, i => i.InternalCode)
+        .Select((l, r) => new { l.FileRow, l.Iban, Portfolio = r })
+        .CacheFullDataset())
     .Where($"{TaskName}: exclude cash movement unfound portfolio", i => i.Portfolio != null)
-    .EfCoreLookup($"{TaskName}: get target account by iban", o => o.LeftJoinEntity(i => i.Iban, (Cash i) => i.Iban, (l, r) => new { l.FileRow, l.Portfolio, TargetAccount = r }).CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get target account by iban", o => o
+        .Set<Cash>()
+        .On(i => i.Iban, i => i.Iban)
+        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetAccount = r })
+        .CacheFullDataset())
     // .Where($"{TaskName}: exclude movements with target account not found", i => i.TargetAccount != null)
-    .EfCoreLookup($"{TaskName}: get underlying security by isin", o => o.LeftJoinEntity(i => string.Equals(i.FileRow.TransactionDescription, "cash transfer", StringComparison.InvariantCultureIgnoreCase) && string.Equals(i.FileRow.SecurityName, "DIVIDENDES D'ACTIONS", StringComparison.InvariantCultureIgnoreCase) ? i.FileRow.Description : i.FileRow.IsinCode, (SecurityInstrument i) => i.Isin, (l, r) => new { l.FileRow, l.Portfolio, l.TargetAccount, UnderlyingSecurity = r }).CacheFullDataset())
+    .EfCoreLookup($"{TaskName}: get underlying security by isin", o => o
+        .Set<SecurityInstrument>()
+        .On(i => string.Equals(i.FileRow.TransactionDescription, "cash transfer", StringComparison.InvariantCultureIgnoreCase) && string.Equals(i.FileRow.SecurityName, "DIVIDENDES D'ACTIONS", StringComparison.InvariantCultureIgnoreCase) ? i.FileRow.Description : i.FileRow.IsinCode, i => i.Isin)
+        .Select((l, r) => new { l.FileRow, l.Portfolio, l.TargetAccount, UnderlyingSecurity = r })
+        .CacheFullDataset())
     .LookupCurrency($"{TaskName}: get currency", i => i.FileRow.SecurityCcy.ToLower(), (l, r) => new { l.FileRow, l.Portfolio, l.TargetAccount, l.UnderlyingSecurity, Currency = r })
     // .EntityFrameworkCoreLookup($"{TaskName}: get target security by internal code", dbStream, i => i.FromFile.CNId, (SecurityInstrument i) => i.InternalCode, (l, r) => new { l.FromFile, l.CurrencyId, l.Portfolio, TargetSecurity = l.TargetSecurity ?? r }, true)
     .Select($"{TaskName}: Create a sequence number based on the key", i => new { i.FileRow.FundWebCode, i.FileRow.TransactionId, i.FileRow.AccountCcy, i.FileRow.Reversal }, (i, seq) => new
