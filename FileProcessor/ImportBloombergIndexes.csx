@@ -41,7 +41,7 @@ var indexRowStream = rowStream
     .Where($"{TaskName}: keep only indexes", i => !string.IsNullOrWhiteSpace(i.Index));
 var indexStream = indexRowStream
     .Distinct($"{TaskName}: Exclude doubles for a code", i => i.Index.ToLower(), true)
-    .Select($"{TaskName}: create index instance", ProcessContextStream, (row, dbCtx) => new Db.Pms.Index
+    .Select($"{TaskName}: create index instance", ProcessContextStream, (row, dbCtx) => new Db.Benchmarking.Index
     {
         TenantId = dbCtx.TenantId,
         PricingFrequency = DbEnums.FrequencyType.Daily,
@@ -56,7 +56,7 @@ var savedIndexHistoricalValueStream = indexRowStream
         FromFile = l,
         Index = r
     })
-    .Select($"{TaskName}: Create index value instance", row => new Db.Pms.IndexHistoricalValue
+    .Select($"{TaskName}: Create index value instance", row => new Db.Benchmarking.IndexHistoricalValue
     {
         Date = row.FromFile.Date,
         IndexId = row.Index.Id,
