@@ -1,7 +1,7 @@
 HashSet<string> instrumentCategoryCash = new HashSet<string>(new[] { "tres", "cpon", "agde", "avfi", "capi", "char", "cmov", "comp", "cpcr", "crne", "devi", "div", "fcha", "fis ", "frai", "indi", "lat", "matp", "opcl", "part", "port", "prod", "reme", "rev", "rtro", "sic", "sr", "swac", "taux", "ters", "tisl", "tota", "tree", "trev", "trs", "vfnm", "zgat", "zgde", "ztrd" }, StringComparer.InvariantCultureIgnoreCase);
 HashSet<string> subCategory2CashIfVmob = new HashSet<string>(new[] { "152319", "131005", "999999", "122050", "112007", "131013", "115500", "115000", "131010" }, StringComparer.InvariantCultureIgnoreCase);
 
-var rbcPositionFileDefinition = FlatFileDefinition.Create(i => new
+var efaPositionFileDefinition = FlatFileDefinition.Create(i => new
 {
     FundCode = i.ToColumn<string>("Fund_code"),
     FundLongName = i.ToColumn<string>("Fund_Long_Name"),
@@ -39,7 +39,7 @@ var rbcPositionFileDefinition = FlatFileDefinition.Create(i => new
 }).IsColumnSeparated(',');
 
 var posFileStream = FileStream
-    .CrossApplyTextFile($"{TaskName}: parse position file", rbcPositionFileDefinition)
+    .CrossApplyTextFile($"{TaskName}: parse position file", efaPositionFileDefinition)
     .SetForCorrelation($"{TaskName}: Set correlation key");
 
 var sicavStream = posFileStream
