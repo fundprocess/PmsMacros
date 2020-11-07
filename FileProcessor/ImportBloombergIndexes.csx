@@ -45,10 +45,10 @@ var indexStream = indexRowStream
     {
         TenantId = dbCtx.TenantId,
         PricingFrequency = DbEnums.FrequencyType.Daily,
-        Code = row.Index,
+        InternalCode = row.Index,
         Name = row.Index
     })
-    .EfCoreSave($"{TaskName}: save index", o => o.SeekOn(i => i.Code).DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: save index", o => o.SeekOn(i => i.InternalCode ).DoNotUpdateIfExists());
 var savedIndexHistoricalValueStream = indexRowStream
     .Distinct($"{TaskName}: Exclude doubles for a code and a date", i => new { Index = i.Index.ToLower(), i.Date }, true)
     .CorrelateToSingle($"{TaskName}: Lookup related index", indexStream, (l, r) => new

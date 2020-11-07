@@ -62,7 +62,7 @@ var savedTransactionStream = transFileStream
     {
         PortfolioId = i.Portfolio.Id,
         SecurityId = i.TargetSecurity.Id,
-        OperationType = i.FileRow.OperationType=="RVP"? OperationType.Purchase: OperationType.Sale,
+        OperationType = i.FileRow.OperationType=="RVP"? OperationType.Buy: OperationType.Sale,
         TransactionCode = $"{i.FileRow.PortfolioCode}-{i.FileRow.TradeDate:yyyyMMdd}-{i.FileRow.IsinCode}-{i.FileRow.GrossAmountInSecurityCcy.Value}",
         Description = i.FileRow.Description,
         TradeDate = i.FileRow.TradeDate,
