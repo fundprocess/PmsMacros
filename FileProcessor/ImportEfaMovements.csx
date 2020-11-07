@@ -145,7 +145,7 @@ CashMovement CreateCashMovement(
 {
     TransactionType transactionType = MapTransactionType(lcat, ttyp);
     OperationType operationType = MapOperationType(mgroup, mtyp);
-    double sig = operationType == OperationType.Purchase ? -1 : 1;
+    double sig = operationType == OperationType.Buy ? -1 : 1;
     var netAmountInPortfolioCcy = inOutPriceTrCcy != 0
         ? sig * (inOutPriceTrCcy - transactionFees) * (inOutPriceSubCcy / inOutPriceTrCcy)
         : 0;
@@ -201,7 +201,7 @@ SecurityTransaction CreateSecurityTransaction(
 {
     TransactionType transactionType = MapTransactionType(lcat, ttyp);
     OperationType operationType = MapOperationType(mgroup, mtyp);
-    double sig = operationType == OperationType.Purchase ? -1 : 1;
+    double sig = operationType == OperationType.Buy ? -1 : 1;
     var netAmountInPortfolioCcy = inOutPriceTrCcy != 0
         ? sig * (inOutPriceTrCcy - transactionFees) * (inOutPriceSubCcy / inOutPriceTrCcy)
         : 0;
@@ -239,7 +239,7 @@ OperationType MapOperationType(string mgroup, string mtyp)
         case "s": // sortie
         case "st": // sortie
         case "dt": // depense
-            return OperationType.Purchase;
+            return OperationType.Buy;
     }
     throw new Exception("Unknown operation type");
 }

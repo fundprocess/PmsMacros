@@ -91,7 +91,7 @@ SecurityTransaction CreateSecurityTransaction(
     DateTime valueDate
 )
 {
-    var type = string.Equals(operationType, "purch", StringComparison.InvariantCultureIgnoreCase) ? OperationType.Purchase : OperationType.Sale;
+    var type = string.Equals(operationType, "purch", StringComparison.InvariantCultureIgnoreCase) ? OperationType.Buy : OperationType.Sale;
     return new SecurityTransaction
     {
         PortfolioId = portfolioId,
