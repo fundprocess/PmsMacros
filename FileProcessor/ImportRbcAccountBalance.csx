@@ -55,8 +55,7 @@ var fileRowStream = FileStream
             l.Classification2,
             l.Classification3,
             Portfolio = r
-        })
-        .CacheFullDataset())
+        }))
     .Where($"{TaskName}: Exclude account balance with no related portfolio", i => i.Portfolio != null);
 
 var deletedScopeStream = fileRowStream

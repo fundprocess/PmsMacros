@@ -37,20 +37,17 @@ var savedCashMovementStream = FileStream
     .EfCoreLookup($"{TaskName}: get related portfolio", o => o
         .Set<Portfolio>()
         .On(i => i.FundCode, i => i.InternalCode)
-        .Select((l, r) => new { l.FileRow, l.Iban, Portfolio = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Iban, Portfolio = r }))
     .Where($"{TaskName}: exclude cash movement unfound portfolio", i => i.Portfolio != null)
     .EfCoreLookup($"{TaskName}: get target account by iban", o => o
         .Set<Cash>()
         .On(i => i.Iban, i => i.Iban)
-        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetAccount = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetAccount = r }))
     // .Where($"{TaskName}: exclude movements with target account not found", i => i.TargetAccount != null)
     .EfCoreLookup($"{TaskName}: get underlying security by isin", o => o
         .Set<SecurityInstrument>()
         .On(i => string.Equals(i.FileRow.TransactionDescription, "cash transfer", StringComparison.InvariantCultureIgnoreCase) && string.Equals(i.FileRow.SecurityName, "DIVIDENDES D'ACTIONS", StringComparison.InvariantCultureIgnoreCase) ? i.FileRow.Description : i.FileRow.IsinCode, i => i.Isin)
-        .Select((l, r) => new { l.FileRow, l.Portfolio, l.TargetAccount, UnderlyingSecurity = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Portfolio, l.TargetAccount, UnderlyingSecurity = r }))
     .LookupCurrency($"{TaskName}: get currency", i => i.FileRow.SecurityCcy.ToLower(), (l, r) => new { l.FileRow, l.Portfolio, l.TargetAccount, l.UnderlyingSecurity, Currency = r })
     // .EntityFrameworkCoreLookup($"{TaskName}: get target security by internal code", dbStream, i => i.FromFile.CNId, (SecurityInstrument i) => i.InternalCode, (l, r) => new { l.FromFile, l.CurrencyId, l.Portfolio, TargetSecurity = l.TargetSecurity ?? r }, true)
     .Select($"{TaskName}: Create a sequence number based on the key", i => new { i.FileRow.FundWebCode, i.FileRow.TransactionId, i.FileRow.AccountCcy, i.FileRow.Reversal }, (i, seq) => new
@@ -89,7 +86,7 @@ var savedCashMovementStream = FileStream
         i.Sequence,
         i.Currency.Id
     ))
-    .EfCoreSave($"{TaskName}: Save cash movement", o => o.SeekOn(i => i.TransactionCode));
+    .EfCoreSave($"{TaskName}: Save cash movement", o => o.SeekOn(i => i.TransactionCode).DoNotUpdateIfExists());
 return FileStream.WaitWhenDone($"{TaskName}: wait till everything is saved", savedCashMovementStream);
 
 CashMovement CreateCashMovement(

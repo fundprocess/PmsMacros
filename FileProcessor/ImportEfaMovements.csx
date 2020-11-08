@@ -41,8 +41,7 @@ var movementsWithPortfolioStream = movFileStream
     .EfCoreLookup($"{TaskName}: get related portfolio", o => o
         .Set<Portfolio>()
         .On(i => i.SFund, i => i.InternalCode)
-        .Select((l, r) => new { FileRow = l, Portfolio = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { FileRow = l, Portfolio = r }))
     .Where($"{TaskName}: exclude movement unfound portfolio", i => i.Portfolio != null);
 
 var savedSecurityTransactionStream = movementsWithPortfolioStream
@@ -50,8 +49,7 @@ var savedSecurityTransactionStream = movementsWithPortfolioStream
     .EfCoreLookup($"{TaskName}: get target security by internal code", o => o
         .Set<SecurityInstrument>()
         .On(i => i.FileRow.InstrCode, i => i.InternalCode)
-        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r }))
     .Where($"{TaskName}: exclude movements with target security not found", i => i.TargetSecurity != null)
     .CorrelateToSingle($"{TaskName}: get broker by internal code", brokerStream, (l, r) => new { l.FileRow, l.Portfolio, l.TargetSecurity, Broker = r })
     .Select($"{TaskName}: Create security transaction", i => CreateSecurityTransaction(
@@ -85,8 +83,7 @@ var savedCashMovementStream = movementsWithPortfolioStream
     .EfCoreLookup($"{TaskName}: get underlying security by isin", o => o
         .Set<SecurityInstrument>()
         .On(i => i.FileRow.Isin, i => i.Isin)
-        .Select((l, r) => new { l.FileRow, l.Portfolio, UnderlyingSecurity = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Portfolio, UnderlyingSecurity = r }))
     .LookupCurrency($"{TaskName}: get currency", i => i.FileRow.Icy, (l, r) => new { l.FileRow, l.Portfolio, l.UnderlyingSecurity, Currency = r })
     .Select($"{TaskName}: Create cash movement", i => CreateCashMovement(
         i.Portfolio.Id,

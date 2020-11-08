@@ -39,14 +39,14 @@ var portfolioStream = posFileStream
     .EfCoreSave($"{TaskName}: save portfolio", o => o.SeekOn(i => i.InternalCode));
 
 var targetSecurityStream = posFileStream
-    .ReKey($"{TaskName}: Uniformize target instrument codes", i => new { i.Isin, i.SecNbr }, (i, k) => new { FileRow = i, Key = k })
-    .Distinct($"{TaskName}: distinct target security", i => i.Key)
+    .ReKey($"{TaskName}: Uniformize target instrument codes", i => new { i.Isin, i.SecNbr })
+    .Distinct($"{TaskName}: distinct target security", i => new { i.Isin, i.SecNbr })
     .LookupCurrency($"{TaskName}: get related currency for target security", l => l.FileRow.SecCur, (l, r) => new
     {
-        l.Key.SecNbr,
+        l.FileRow.SecNbr,
         l.FileRow.SecType,
         l.FileRow.SecName,
-        l.Key.Isin,
+        l.FileRow.Isin,
         CurrencyId = r?.Id
     })
     .Select($"{TaskName}: create security for composition", i => CreateSecurityForComposition(i.SecNbr, i.SecType, i.SecName, i.CurrencyId, i.Isin));

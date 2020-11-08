@@ -38,8 +38,7 @@ var classificationsOfSecurity = ProcessContextStream.EfCoreSelect("Get every sec
             SecurityId = l.SecurityId,
             ClassificationId = r.Id,
             ClassificationTypeId = l.ClassificationTypeId
-        })
-        .CacheFullDataset())
+        }))
     .EfCoreSave("Save security classifications");
 
 ProcessContextStream.WaitWhenDone("wait till everything is done", classificationsOfSecurity)

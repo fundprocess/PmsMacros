@@ -30,14 +30,12 @@ var savedTransactionStream = transFileStream
     .EfCoreLookup($"{TaskName}: get related portfolio", o => o
         .Set<Portfolio>()
         .On(i => i.FundCode, i => i.InternalCode)
-        .Select((l, r) => new { FileRow = l, Portfolio = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { FileRow = l, Portfolio = r }))
     .Where($"{TaskName}: exclude transaction with unfound portfolio", i => i.Portfolio != null)
     .EfCoreLookup($"{TaskName}: get target security by isin", o => o
         .Set<SecurityInstrument>()
         .On(i => i.FileRow.IsinCode, i => i.Isin)
-        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r }))
     .Where($"{TaskName}: exclude movements with target security not found", i => i.TargetSecurity != null) // TODO: check why not every security matches
     .Select($"{TaskName}: Create security transaction", i => CreateSecurityTransaction(
         i.Portfolio.Id,

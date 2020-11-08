@@ -46,8 +46,7 @@ var counterpartyRelationshipStream = brokerStream
             EmirClassification = EmirClassification.Financial,
             EntityId = l.BrokerId,
             CurrencyId = l.CurrencyId
-        })
-        .CacheFullDataset())
+        }))
     .EfCoreSaveCorrelated($"{TaskName}: Insert relationship", o => o.DoNotUpdateIfExists());
 
 var transactionToSaveStream = transFileStream
@@ -63,8 +62,7 @@ var transactionToSaveStream = transFileStream
     .EfCoreLookup($"{TaskName}: Get related portfolio", o => o
         .Set<Portfolio>()
         .On(i => i.FundCode, i => i.InternalCode)
-        .Select((l, r) => new { FileRow = l, Portfolio = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { FileRow = l, Portfolio = r }))
     .Where($"{TaskName}: Exclude transaction unfound portfolio", i => i.Portfolio != null)
     .CorrelateToSingle($"{TaskName}: Get correlated relationship", counterpartyRelationshipStream, (l, r) => new { l.FileRow, l.Portfolio, Relationship = r });
 
@@ -85,8 +83,7 @@ var savedTransactionStream = transactionToSaveStream
     .EfCoreLookup($"{TaskName}: Get target option by internal code", o => o
         .Set<Option>()
         .On(i => i.FileRow.OptionRbcdisCode, i => i.InternalCode)
-        .Select((l, r) => new { l.FileRow, l.Portfolio, l.Relationship, TargetOption = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.Portfolio, l.Relationship, TargetOption = r }))
     .Where($"{TaskName}: Exclude movements with target option not found", i => i.TargetOption != null) // TODO: Check why not everything matches
     .Select($"{TaskName}: Create option transaction", i => CreateSecurityTransaction(
         i.Portfolio.Id,
