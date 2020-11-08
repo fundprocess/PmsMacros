@@ -143,7 +143,7 @@ SecurityTransaction CreateSecurityTransaction(
 
 OperationType GetOperationType(string optionDescription)
 {
-    if (optionDescription.StartsWith("purchase", true, null)) return OperationType.Purchase;
+    if (optionDescription.StartsWith("purchase", true, null)) return OperationType.Buy;
     if (optionDescription.StartsWith("sale", true, null)) return OperationType.Sale;
     if (optionDescription.StartsWith("closing", true, null)) return OperationType.Closing;
     throw new Exception("Impossible to define the operation type");
