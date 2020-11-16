@@ -13,149 +13,103 @@ var rbcAccountBalanceFileDefinition = FlatFileDefinition.Create(i => new
     FileName = i.ToSourceName()
 }).IsColumnSeparated(',');
 
-DateTime MinDate(DateTime a, DateTime b) => a < b ? a : b;
-DateTime MaxDate(DateTime a, DateTime b) => a > b ? a : b;
-
 var classificationTypeStream = ProcessContextStream
     .Select($"{TaskName}: Create RBC Accounting chart classification type", ctx => new MovementClassificationType { Code = "RbcAccountingChart", Name = new MultiCultureString { ["en"] = "Accounting chart RBC",["fr"] = "Tableau comptable RBC" } })
     .EfCoreSave($"{TaskName}: Save RBC Accounting chart classification type", o => o.SeekOn(i => i.Code))
-    .EnsureSingle($"{TaskName}: only one classification type");
+    .EnsureSingle($"{TaskName}: Only one classification type");
 
 var fileRowStream = FileStream
-    .CrossApplyTextFile($"{TaskName}: parse account balance file", rbcAccountBalanceFileDefinition, true)
-    .Select($"{TaskName}: restructure file row", classificationTypeStream, (i, ct) => new
-    {
-        FileRow = i,
-        Classification1 = new
-        {
-            ClassificationTypeId = ct.Id,
-            Code = i.AccountingChartLabelLevel1.Substring(0, 1),
-            Name = new MultiCultureString { ["en"] = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(i.AccountingChartLabelLevel1.Substring(1).ToLower()) }
-        },
-        Classification2 = new
-        {
-            ClassificationTypeId = ct.Id,
-            Code = i.BalanceChartLabel.Substring(0, 6),
-            Name = new MultiCultureString { ["en"] = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(i.BalanceChartLabel.Substring(6).ToLower()) }
-        },
-        Classification3 = new
-        {
-            ClassificationTypeId = ct.Id,
-            Code = i.AccountNumber,
-            Name = new MultiCultureString { ["en"] = i.AccountName }
-        },
-    })
-    .EfCoreLookup($"{TaskName}: get related portfolio", o => o
-        .Set<Portfolio>()
-        .On(i => i.FileRow.SubFundCode, i => i.InternalCode)
-        .Select((l, r) => new
-        {
-            l.FileRow,
-            l.Classification1,
-            l.Classification2,
-            l.Classification3,
-            Portfolio = r
-        }))
-    .Where($"{TaskName}: Exclude account balance with no related portfolio", i => i.Portfolio != null);
+    .CrossApplyTextFile($"{TaskName}: Parse account balance file", rbcAccountBalanceFileDefinition, true)
+    .SetForCorrelation($"{TaskName}: Set correlation key");
 
-var deletedScopeStream = fileRowStream
-    .Aggregate($"{TaskName}: group row per file and portfolio", i => new { i.FileRow.FileName, i.Portfolio.Id }, i => new
+var accountingDayStream = fileRowStream
+    .Distinct($"{TaskName}: Distinct accounting days", i => new { i.NavDate, i.SubFundCode })
+    .LookupPortfolio($"{TaskName}: Get Related portfolio", i => i.SubFundCode, (l,r) => new AccountingDay
     {
-        MinDate = i.FileRow.NavDate,
-        MaxDate = i.FileRow.NavDate
-    }, (a, v) => new
-    {
-        MinDate = MinDate(v.FileRow.NavDate, a.MinDate),
-        MaxDate = MaxDate(v.FileRow.NavDate, a.MinDate)
+        PortfolioId = r.Id,
+        Date = l.NavDate,
     })
-    .Select($"{TaskName}: prepare data to remove", i =>
-    (
-        PortfolioId: i.Key.Id,
-        MinDate: i.Aggregation.MinDate,
-        MaxDate: i.Aggregation.MaxDate
-    ))
-    .EfCoreDelete($"{TaskName}: delete existing data in the scope", o => o
+    .EfCoreSave($"{TaskName}: Save Accounting Day", o => o
+        .SeekOn(i => new { i.Date, i.PortfolioId })
+        .DoNotUpdateIfExists())
+    .EfCoreDelete($"{TaskName}: Delete related balances", o => o
         .Set<AccountBalance>()
-        .Where((i, a) => a.PortfolioId == i.PortfolioId && a.Date >= i.MinDate && a.Date <= i.MaxDate))
-    .Select($"{TaskName}: change scope into object (technical reason)", i => new object());
+        .Where((i, a) => a.AccountingDayId == i.Id));
 
 #region Classifications
-var classification1Stream = fileRowStream
-    .Distinct($"{TaskName}: distinct classification 1", i => i.Classification1.Code)
-    .Select($"{TaskName}: create classification 1", c => new MovementClassification
+var classificationRowStream = fileRowStream
+    .Select($"{TaskName}: Get classification type", classificationTypeStream, (i,ct) => new 
     {
-        Name = c.Classification1.Name,
-        Code = c.Classification1.Code,
-        ClassificationTypeId = c.Classification1.ClassificationTypeId
-    })
-    .EfCoreSave($"{TaskName}: Insert level 1 classification", o => o.SeekOn(i => new { i.ClassificationTypeId, i.Code }).DoNotUpdateIfExists());
-
-var classification2Stream = fileRowStream
-    .Distinct($"{TaskName}: distinct classification 2", i => i.Classification2.Code)
-    .Lookup($"{TaskName}: get related classification 1", classification1Stream, i => i.Classification1.Code, i => i.Code, (l, r) => new { l.Classification2, Classification1 = r })
-    .Select($"{TaskName}: create classification 2", c => new MovementClassification
-    {
-        Name = c.Classification2.Name,
-        Code = c.Classification2.Code,
-        ClassificationTypeId = c.Classification2.ClassificationTypeId,
-        ParentId = c.Classification1.Id
-    })
-    .EfCoreSave($"{TaskName}: Insert level 2 classification", o => o.SeekOn(i => new { i.ClassificationTypeId, i.Code }).DoNotUpdateIfExists());
-
-var classification3Stream = fileRowStream
-    .Distinct($"{TaskName}: distinct classification 3", i => i.Classification3.Code)
-    .Where($"{TaskName}: keep classification that are different than their parent", i => i.Classification2.Code != i.Classification3.Code)
-    .Lookup($"{TaskName}: get related classification 2", classification2Stream, i => i.Classification2.Code, i => i.Code, (l, r) => new { l.Classification3, Classification2 = r })
-    .Select($"{TaskName}: create classification 3", c => new MovementClassification
-    {
-        Name = c.Classification3.Name,
-        Code = c.Classification3.Code,
-        ClassificationTypeId = c.Classification3.ClassificationTypeId,
-        ParentId = c.Classification2.Id
-    })
-    .EfCoreSave($"{TaskName}: Insert level 3 classification", o => o.SeekOn(i => new { i.ClassificationTypeId, i.Code }).DoNotUpdateIfExists());
-
-var classificationStream = classification2Stream.UnionAll($"{TaskName}: join classifications level 2 and 3", classification3Stream);
-#endregion
-
-
-var accountBalanceDataAfterExistingScopeDeletionStream = fileRowStream
-    .WaitWhenDone($"{TaskName}: delay till the preexisting scope is deleted", deletedScopeStream)
-    .LookupCurrency($"{TaskName}: get related currency", i => i.FileRow.AccountCurrency, (l, r) => new
-    {
-        l.FileRow,
-        l.Portfolio,
-        l.Classification3,
-        Currency = r
-    })
-    .Lookup($"{TaskName}: get related classification", classificationStream, i => i.Classification3.Code, i => i.Code, (l, r) => new
-    {
-        l.Currency,
-        l.Portfolio,
-        l.FileRow,
-        Classification = r
+        Level1Code = i.AccountingChartLabelLevel1.Substring(0, 1),
+        Level1Name = new MultiCultureString { ["en"] = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(i.AccountingChartLabelLevel1.Substring(1).ToLower()) },
+        Level2Code = i.BalanceChartLabel.Substring(0, 6),
+        Level2Name = new MultiCultureString { ["en"] = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(i.BalanceChartLabel.Substring(6).ToLower()) },
+        Level3Code = i.AccountNumber,
+        Level3Name = new MultiCultureString { ["en"] = i.AccountName },
+        ClassificationTypeId = ct.Id
     });
 
-var accountBalanceSaved = accountBalanceDataAfterExistingScopeDeletionStream
-    .Select($"{TaskName}: create account balance", i => new
+var classification1Stream = classificationRowStream
+    .Distinct($"{TaskName}: Distinct classification 1", i => i.Level1Code)
+    .Select($"{TaskName}: Create classification 1", i => new MovementClassification
     {
-        i.Classification,
-        AccountBalance = new AccountBalance
-        {
-            PortfolioId = i.Portfolio.Id,
-            Date = i.FileRow.NavDate,
-            Balance = i.FileRow.AccountBalanceInAccountCurrency,
-            BalanceInPortfolioCcy = i.FileRow.MarketValueAmountInFundCcy,
-            CurrencyId = i.Currency.Id
-        }
+        Code = i.Level1Code,
+        Name = i.Level1Name,
+        ClassificationTypeId = i.ClassificationTypeId,
     })
-    .EfCoreSave($"{TaskName}: save account balance", o => o.Entity(i => i.AccountBalance).InsertOnly().Output((i, e) => i))
-    .Select($"{TaskName}: create classification for account balance", i => new ClassificationOfAccountBalance
-    {
-        AccountBalanceId = i.AccountBalance.Id,
-        ClassificationId = i.Classification.Id,
-        ClassificationTypeId = i.Classification.ClassificationTypeId
-    })
-    .EfCoreSave($"{TaskName}: Insert classification for balance", o => o.DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save classification 1", o => o
+        .SeekOn(i => i.Code)
+        .DoNotUpdateIfExists());
 
-return FileStream.WaitWhenDone($"{TaskName}: wait till everything is saved", accountBalanceSaved);
+var classification2Stream = classificationRowStream
+    .Distinct($"{TaskName}: Distinct classification 2", i => i.Level2Code)
+    .CorrelateToSingle($"{TaskName}: Get related classification 1", classification1Stream, (i,c) => new MovementClassification
+    {
+        Code = i.Level2Code,
+        Name = i.Level2Name,
+        ClassificationTypeId = i.ClassificationTypeId,
+        ParentId = c.Id
+    })
+    .EfCoreSave($"{TaskName}: Save classification 2", o => o
+        .SeekOn(i => i.Code)
+        .DoNotUpdateIfExists());
+
+var classification3Stream = classificationRowStream
+    .Distinct($"{TaskName}: Distinct classification 3", i => i.Level3Code)
+    .CorrelateToSingle($"{TaskName}: Get related classification 2", classification2Stream, (i,c) => new MovementClassification
+    {
+        Code = i.Level3Code,
+        Name = i.Level3Name,
+        ClassificationTypeId = i.ClassificationTypeId,
+        ParentId = c.Id
+    })
+    .EfCoreSave($"{TaskName}: Save classification 3", o => o
+        .SeekOn(i => i.Code)
+        .DoNotUpdateIfExists());
+
+#endregion
+
+var accountBalanceSaved = fileRowStream
+    .LookupCurrency($"{TaskName}: get related currency", i => i.AccountCurrency, (l, r) => new
+    {
+        FileRow=l,
+        Currency = r
+    })
+    .CorrelateToSingle($"{TaskName}: get related accounting day", accountingDayStream, (l, r) => new AccountBalance
+    {
+        AccountingDayId = r.Id,
+        Balance = l.FileRow.AccountBalanceInAccountCurrency,
+        BalanceInPortfolioCcy = l.FileRow.MarketValueAmountInFundCcy,
+        CurrencyId = l.Currency.Id
+    })
+    .EfCoreSaveCorrelated($"{TaskName}: Save account balance", o => o.InsertOnly());
+
+var classificationOfAccount = accountBalanceSaved.CorrelateToSingle($"{TaskName}: Get related classifications", classification3Stream, (a, c) => new ClassificationOfAccountBalance
+    {
+        AccountBalanceId = a.Id,
+        ClassificationId = c.Id,
+        ClassificationTypeId = c.ClassificationTypeId
+    })
+    .EfCoreSaveCorrelated($"{TaskName}: Insert classification for balance", o => o.DoNotUpdateIfExists());
+
+return FileStream.WaitWhenDone($"{TaskName}: wait till everything is saved", classificationOfAccount);
