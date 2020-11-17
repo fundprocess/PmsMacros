@@ -146,17 +146,17 @@ var targetCashStream = posFileStream
 var targetInstrumentStream = posFileStream
     .Where($"{TaskName}: keep non cash only", i => !IsCash(i.InstrCategory, i.Category1, i.Category2))
     .Fix($"{TaskName}: recompute isin", i => i.FixProperty(p => p.Isin).AlwaysWith(p => p.Isin == "-1" ? null : p.Isin))
-    .ReKey($"{TaskName}: Uniformize target instrument codes", i => new { i.Isin, i.InstrCode }, (i, k) => new { FileRow = i, Key = k })
-    .Distinct($"{TaskName}: distinct positions security", i => i.Key)
-    .LookupCountry($"{TaskName}: get related country for target security", l => l.FileRow.GeoSectCode, (l, r) => new { l.FileRow, l.Key, Country = r })
-    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.FileRow.InstrEvaluationCcy, (l, r) => new { l.FileRow, l.Key, l.Country, Currency = r })
+    .ReKey($"{TaskName}: Uniformize target instrument codes", i => new { i.Isin, i.InstrCode })
+    .Distinct($"{TaskName}: distinct positions security", i => new { i.Isin, i.InstrCode })
+    .LookupCountry($"{TaskName}: get related country for target security", l => l.FileRow.GeoSectCode, (l, r) => new { l.FileRow, Country = r })
+    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.FileRow.InstrEvaluationCcy, (l, r) => new { l.FileRow, l.Country, Currency = r })
     .Select($"{TaskName}: create instrument", i => CreateSecurityForComposition(
             i.FileRow.InstrCategory,
             i.FileRow.Category1,
             i.FileRow.Category2,
-            i.Key.InstrCode,
+            i.FileRow.InstrCode,
             i.FileRow.InstrLongName,
-            i.Key.Isin,
+            i.FileRow.Isin,
             i.Currency?.Id,
             i.FileRow.MaturityDate,
             i.Country?.Id,

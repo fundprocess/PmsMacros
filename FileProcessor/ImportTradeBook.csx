@@ -35,13 +35,11 @@ var tradesStream = tradeFileStream
     .EfCoreLookup($"{TaskName}: get related security", o=> o
         .Set<Security>()
         .On(i=>i.FileRow.SecurityCode, s=>s.InternalCode)
-        .Select((l, r) => new { l.FileRow, l.TradeBook , Security = r })
-        .CacheFullDataset())
+        .Select((l, r) => new { l.FileRow, l.TradeBook , Security = r }))
     .EfCoreLookup($"{TaskName}: get related PM", o=> o
         .Set<Person>()
         .On(i => i.FileRow.PlacedBy, p => p.InternalCode)
-        .Select((l,r) => new {FileRow = l.FileRow, Security= l.Security, Person = r, l.TradeBook })
-        .CacheFullDataset())
+        .Select((l,r) => new {FileRow = l.FileRow, Security= l.Security, Person = r, l.TradeBook }))
     .Select($"{TaskName}: Create trades", i => new Trade 
     { 
         TradeBookId = i.TradeBook.Id,
