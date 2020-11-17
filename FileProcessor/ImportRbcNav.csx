@@ -22,6 +22,7 @@ var rbcNavFileDefinition = FlatFileDefinition.Create(i => new
     QuantityRedemption = i.ToNumberColumn<double?>("QUANTITY REDEMPTION", "."),
     QuantitySubscription = i.ToNumberColumn<double?>("QUANTITY SUBSCRIPTION", "."),
     //Tis = i.ToNumberColumn<double>("TIS", "."),
+    TotalNetAssetBeforeDividend = i.ToNumberColumn<double>("TNA BEFORE DIVIDEND", "."),
     TotalNetAsset = i.ToNumberColumn<double>("TOTAL NET ASSET", "."),
     //TotalTisAmount = i.ToNumberColumn<double>("TOTAL TIS AMOUNT", "."),
 }).IsColumnSeparated(',');
@@ -115,8 +116,10 @@ var savedShareClassHistoricalValueStream = navFileStream
             new { Type = HistoricalValueType.NBS, Value = (double?)i.FileRow.NbShares },
             new { Type = HistoricalValueType.RED, Value = (double?)i.FileRow.QuantityRedemption },
             new { Type = HistoricalValueType.SUB, Value = (double?)i.FileRow.QuantitySubscription },
+	        new { Type = HistoricalValueType.DIV, Value = 
+                ((double?)i.FileRow.TotalNetAssetBeforeDividend - (double?)i.FileRow.TotalNetAsset) / ((double?)i.FileRow.NbShares)},
         }
-        .Where(j => j.Value != null)
+        .Where(j => j.Value != null && j.Value != 0)
         .Select(j => new SecurityHistoricalValue
         {
             SecurityId = i.ShareClass.Id,

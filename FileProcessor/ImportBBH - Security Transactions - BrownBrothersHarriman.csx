@@ -51,8 +51,8 @@ var counterpartyStream = brokerCompanyStream
 
 var savedTransactionStream = transFileStream
     .LookupPortfolio($"{TaskName}: Lookup for portfolio", i => i.PortfolioCode, (l, r) => new { FileRow = l, Portfolio = r })    
-    .EfCoreLookup($"{TaskName}: get target security by isin", o => o
-        .Set<SecurityInstrument>().On(i => i.FileRow.IsinCode, i => i.Isin)
+    .EfCoreLookup($"{TaskName}: get target security by InternalCode", o => o
+        .Set<SecurityInstrument>().On(i => (!string.IsNullOrEmpty(i.FileRow.SecurityIsin))?i.FileRow.SecurityIsin:i.FileRow.SecurityCode , i => i.InternalCode)
         .Select((l, r) => new { l.FileRow, l.Portfolio, TargetSecurity = r }).CacheFullDataset())
     .CorrelateToSingle($"{TaskName}: get broker by internal code", counterpartyStream, (l, r) => new { l.FileRow, l.Portfolio, l.TargetSecurity, Broker = r })
     .Where($"{TaskName}: exclude transaction with unfound portfolio", i => i.Portfolio != null)
@@ -78,7 +78,7 @@ var savedTransactionStream = transFileStream
         BrokerId = i.Broker.Id, 
         TransactionType = TransactionType.SecurityMovement,
         DecisionType = TransactionDecisionType.Discretionary,
-    }).EfCoreSave($"{TaskName}: Save security transaction", o => o.SeekOn(i => i.TransactionCode));
+    }).EfCoreSave($"{TaskName}: Save security transaction", o => o.SeekOn(i => i.TransactionCode).DoNotUpdateIfExists());
 
 return FileStream.WaitWhenDone($"{TaskName}: wait till everything is saved", savedTransactionStream);
 
