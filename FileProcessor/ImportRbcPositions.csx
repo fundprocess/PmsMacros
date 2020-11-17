@@ -143,12 +143,7 @@ var securityInstrumentStream = allSecuritiesStream
     .LookupCurrency($"{TaskName}: Get security instrument related currency", i => i.FileRow.SecurityCcy, (l, r) => new { l.SecurityType, l.FileRow, Currency = r })
     .LookupCountry($"{TaskName}: Get security instrument related country", i => i.FileRow.GeographicalSector, (l, r) => new { l.SecurityType, l.FileRow, l.Currency, Country = r })
     .Select($"{TaskName}: Create security instrument", i => CreateSecurityInstrument(i.SecurityType, i.Currency?.Id, i.FileRow.IsinCode, i.FileRow.InstrumentName, i.FileRow.InternalNumber, i.FileRow.NextCouponDate, i.FileRow.MaturityDate, i.FileRow.QuotationPlace, i.FileRow.PutOrCall, i.FileRow.OptionStyle, i.Country?.Id, i.FileRow.ContractSize, i.FileRow.StrikePrice, i.FileRow.LastCouponDate))
-    .ReKey($"{TaskName}: Uniformize target security codes", i => new { i.Isin, i.InternalCode }, (i, k) =>
-    {
-        i.Isin = k.Isin;
-        i.InternalCode = k.InternalCode;
-        return i;
-    })
+    .ReKey($"{TaskName}: Uniformize target security codes", i => new { i.Isin, i.InternalCode })
     .Distinct($"{TaskName}: Distinct security instrument", c => c.InternalCode)
     .EfCoreSave($"{TaskName}: Insert security instrument", o => o.SeekOn(c => c.Isin).AlternativelySeekOn(c => c.InternalCode).Output((i, e) => (Security)e).DoNotUpdateIfExists());
 
