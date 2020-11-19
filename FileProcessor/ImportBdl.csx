@@ -4,6 +4,7 @@ class BdlSecPosNode // /response/response/cont/pos/Secpos
     public string FileName { get; set; }
     public string ContId { get; set; } // /response/response/cont/@ContId
     public string SecurityCode { get; set; } // <SecurityCode>24493476</SecurityCode>
+    public string Isin { get; set; }//<Isin>LU0947895834</Isin>
     public double AssetQty { get; set; } // <AssetQty>2190</AssetQty>
     public DateTime AssBalDate { get; set; } // <AssBalDate>2018-07-04</AssBalDate>
     public double TotSec { get; set; } // <TotSec>171696.00</TotSec>
@@ -29,7 +30,12 @@ class BdlSecBaseNode // <Secbase>
     public double? ContrSize { get; set; }   // <ContrSize>100</ContrSize>
     public double? StrikePrice { get; set; }   // <StrikePrice>145</StrikePrice>
     public string EconSector { get; set; }   // <EconSector>84</EconSector>
-
+    public string Issuer {get;set;} //<Issuer>Petroleos Mexicanos PEMEX</Issuer>
+    public double? IntrRate {get;set;} // <IntrRate>5.5</IntrRate>
+    public double? YieldToMat{get;set;} //<YieldToMat>0.081287</YieldToMat>
+    public double? FaceAmt{get;set;} //<FaceAmt>1000</FaceAmt>
+    public DateTime? MatRdmptDate{get;set;} //<MatRdmptDate>2044-06-27</MatRdmptDate>
+    public DateTime? NextCoupDate{get;set;} //<NextCoupDate>2020-06-27</NextCoupDate>
 }
 class BdlCustidNode
 {
@@ -70,7 +76,13 @@ class BdlFileDefinition : XmlFileDefinition
             Wkn = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Wkn"),
             ContrSize = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/ContrSize"),
             StrikePrice = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/StrikePrice"),
-            EconSector = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EconSector")
+            EconSector = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EconSector"),
+            Issuer = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Issuer"),
+            IntrRate = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/IntrRate"),
+            YieldToMat = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/YieldToMat"),
+            FaceAmt = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/FaceAmt"),
+            MatRdmptDate = i.ToXPathQuery<DateTime?>("/response/response/cont/pos/Secbase/MatRdmptDate"),
+            NextCoupDate = i.ToXPathQuery<DateTime?>("/response/response/cont/pos/Secbase/NextCoupDate")
         }));
         this.AddNodeDefinition(XmlNodeDefinition.Create("secpos", "/response/response/cont/pos/Secpos", i => new BdlSecPosNode
         {
@@ -79,6 +91,7 @@ class BdlFileDefinition : XmlFileDefinition
             AssBalDate = i.ToXPathQuery<DateTime>("/response/response/cont/pos/Secpos/AssBalDate"),
             AssetQty = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/AssetQty"),
             SecurityCode = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/SecurityCode"),
+            Isin  = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/Isin"),
             TotRefCcy = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/TotRefCcy"),
             TotSec = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/TotSec"),
             FileName = i.ToSourceName()
@@ -153,7 +166,7 @@ var portfolioStream = filePortfoliosStream
         CurrencyId = i.CurrencyId,
         // CountryCode = i.Domicile
     })
-    .EfCoreSave($"{TaskName}: save portfolio", o => o.SeekOn(i => i.InternalCode));
+    .EfCoreSave($"{TaskName}: save portfolio", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 var allPositions = fileSecurityPositionsStream.Union($"{TaskName}: merge all cash and security positions", fileCashPositionsStream,
         (l, r) => new { Date = l.AssBalDate, SecurityInternalCode = l.ContId, SecurityPosition = l, CashPosition = r },
@@ -189,7 +202,7 @@ var targetCashStream = fileCashPositionsStream
         InternalCode = i.Iban,
         Iban = i.Iban,
         CurrencyId = i.CurrencyId,
-        Name = $"BDL_{i.Iban}",
+        Name = $"{i.Iban}",
         ShortName = $"BDL_{i.Iban}".Truncate(MaxLengths.ShortName),
     })
     .EfCoreSave($"{TaskName}: save target cash", o => o.SeekOn(i => i.Iban).DoNotUpdateIfExists());
@@ -212,20 +225,26 @@ var cashPositionToSaveStream = fileCashPositionsStream
 
 var targetSecurityInstrumentStream = fileTargetSecuritiesStream
     .Distinct($"{TaskName}: distinct target positions security", i => i.Isin ?? i.SecurityCode)
-    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.InstrCcy, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CurrencyId = r?.Id })
-    .LookupCountry($"{TaskName}: get related country for target security", l => l.Domicile, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.CurrencyId, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CountryId = r?.Id })
-    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.InstrType, i.Isin, i.SecurityCode, i.SecName, i.Domicile, i.CurrencyId, i.ValFreq, i.CountryId, i.EurAmStyle, i.UnderlAsset, i.StrikePrice, i.ContrSize) as SecurityInstrument)
+    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.InstrCcy, (l, r) => new {Node =l,l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CurrencyId = r?.Id })
+    .LookupCountry($"{TaskName}: get related country for target security", l => l.Domicile, (l, r) => new {Node =l.Node, l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.CurrencyId, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CountryId = r?.Id })
+    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.InstrType, i.Isin, i.SecurityCode, i.SecName, 
+                                    i.Domicile, i.CurrencyId, i.ValFreq, i.CountryId, i.EurAmStyle, 
+                                    i.UnderlAsset, i.StrikePrice, i.ContrSize,
+                                    i.Node.FaceAmt,i.Node.IntrRate,i.Node.NextCoupDate,new DateTime(2020,10,01)))
     .WhereCorrelated($"{TaskName}: keep known security instrument types", i => i != null)
-    .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.Isin).AlternativelySeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 var instrumentPositionsToSaveStream = fileSecurityPositionsStream
-    .Lookup($"{TaskName}: lookup related target security", targetSecurityInstrumentStream, i => i.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l, Security = r })
-    .Lookup($"{TaskName}: lookup security portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Security, Portfolio = r })
-    .CorrelateToSingle($"{TaskName}: lookup security portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Security, l.Portfolio, r.PortfolioComposition })
+    .Lookup($"{TaskName}: lookup related target security by Isin", targetSecurityInstrumentStream, 
+            i => (!string.IsNullOrEmpty(i.Isin))?i.Isin:i.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l, Security1 = r })
+    .Lookup($"{TaskName}: lookup related target security by Security Code", targetSecurityInstrumentStream, 
+             i => i.FromFile.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l.FromFile, Security1 = l.Security1, Security2 = r })
+    .Lookup($"{TaskName}: lookup security portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Security1, l.Security2, Portfolio = r })
+    .CorrelateToSingle($"{TaskName}: lookup security portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Security1, l.Security2, l.Portfolio, r.PortfolioComposition })
     .Select($"{TaskName}: create security pos", i => new Position
     {
         PortfolioCompositionId = i.PortfolioComposition.Id,
-        SecurityId = i.Security.Id,
+        SecurityId = (i.Security1!=null)? i.Security1.Id: ((i.Security2!=null)?i.Security2.Id:throw new Exception($"Security not found {i.FromFile.SecurityCode}")),
         Value = i.FromFile.AssetQty,
         MarketValueInSecurityCcy = i.FromFile.TotSec,
         MarketValueInPortfolioCcy = i.FromFile.TotRefCcy
@@ -237,39 +256,38 @@ var savedPositions = cashPositionToSaveStream
     .EfCoreSave($"{TaskName}: save position", o => o.SeekOn(i => new { i.SecurityId, i.PortfolioCompositionId }));
 return FileStream.WaitWhenDone($"{TaskName}: wait end of all save", savedPositions);
 
-Security CreateTargetSecurity(int instrType, string isin, string securityCode, string name, string domicile, int? currencyId, string valFreq, int? countryId, string eurAmStyle, string underlAsset, double? strikePrice, double? contractSize)
+Security CreateTargetSecurity(int instrType, string isin, string securityCode, string name, 
+                string domicile, int? currencyId, string valFreq, int? countryId, string eurAmStyle, 
+                string underlAsset, double? strikePrice, double? contractSize,
+                double? faceValue,double? rate, DateTime? nextCouponDate,DateTime? maturityDate)
 {
     Security security = null;
     switch (instrType)
     {
-        case 310:
-            security = new Option();
-            break;
-        case 805:
-        case 810:
-        case 820:
-        case 830:
-        case 840:
-        case 850:
-        case 855:
-        case 870:
-        case 880:
-        case 890:
-        case 896:
-            security = new ShareClass();
+        case 101:
+        case 104:
+            security = new Bond();
             break;
         case 201:
         case 202:
-        case 910:
-        case 911:
-        case 993:
             security = new Equity();
             break;
+        case int n when (n >= 310 && n <= 320):
+            security = new Option();
+            break;
+        case int n when (n >= 800 && n < 900):
+            security = new ShareClass();
+            break;
+        case int n when (n >= 900 && n < 1000):
+            security = new Cash();
+            break;
         default:
-            throw new Exception($"{instrType}: unknown instrument type. (isin: {isin}, name: {name})");
+            throw new Exception($"Unknown instrument type {instrType} not managed: (isin: {isin}, name: {name})");
     }
 
     if (security == null) return null;
+    security.CurrencyId = currencyId;
+    security.InternalCode = securityCode; 
     security.Name = name;
     security.ShortName = name.Truncate(MaxLengths.ShortName);
     if (security is OptionFuture der)
@@ -278,11 +296,33 @@ Security CreateTargetSecurity(int instrType, string isin, string securityCode, s
     }
     if (security is SecurityInstrument securityInstrument)
     {
+        securityInstrument.InternalCode = !string.IsNullOrEmpty(isin)?isin:securityCode;
         securityInstrument.Isin = isin;
     }
     if (security is RegularSecurity regularSecurity)
     {
         regularSecurity.CountryId = countryId;
+    }
+    if (security is Bond bond)
+    {
+        if (rate.HasValue)
+            bond.CouponRate = rate.Value/100;
+        if (faceValue.HasValue)
+            bond.FaceValue = faceValue.Value;
+        if (nextCouponDate.HasValue)
+            bond.NextCouponDate = nextCouponDate.Value;
+        if (maturityDate.HasValue)
+            bond.MaturityDate = maturityDate.Value;
+            
+        // CouponType CouponType= ... ;
+        // bool IsPerpetual= ... ;
+        // DateTime? FirstPaymentDate= ... ;
+        // DateTime? PreviousCouponDate= ... ;
+        // FrequencyType? CouponFrequency= ... ;
+        // BondIssuerType? IssuerType = ... ;
+        // double? IssueAmount= ... ;
+        // bool IsCallable= ... ;
+        // DateTime? NextCallDate= ... ;
     }
     if (security is Option option)
     {
@@ -294,7 +334,6 @@ Security CreateTargetSecurity(int instrType, string isin, string securityCode, s
         standardDerivative.StrikePrice = strikePrice;
         standardDerivative.ContractSize = contractSize;
     }
-    security.CurrencyId = currencyId;
-    security.InternalCode = securityCode;
+    
     return security;
 }
