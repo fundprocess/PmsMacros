@@ -8,13 +8,13 @@ var kbcPositionFileDefinition = FlatFileDefinition.Create(i => new
     SecCur = i.ToColumn<string>("SEC CUR"),
     SecType = i.ToColumn<string>("SEC TYPE"),
     Quantity = i.ToNumberColumn<double>("POSITION", "."),
-    MarketValueInSecurityCcy = i.ToNumberColumn<double?>("VALUE SEC INT IN", "."),    
-    MarketValueInPortfolioCcy  = i.ToNumberColumn<double?>("VAL PORT INT INC", "."),
+    MarketValueInSecurityCcy = i.ToNumberColumn<double?>("VALUE SEC INT IN", "."),
+    MarketValueInPortfolioCcy = i.ToNumberColumn<double?>("VAL PORT INT INC", "."),
     //InputPositionDate = i.ToColumn("PRICE DATE"),
     //EntryDate = i.ToDateColumn("POS_DATE", "yyyyMMdd"),
-    PositionDate  = i.ToDateColumn("DATE", "yyyyMMdd"),
-    FxRate =  i.ToNumberColumn<double?>("EXCH RATE", "."),  
-    Price  =  i.ToNumberColumn<double?>("PRICE", "."),  
+    PositionDate = i.ToDateColumn("DATE", "yyyyMMdd"),
+    FxRate = i.ToNumberColumn<double?>("EXCH RATE", "."),
+    Price = i.ToNumberColumn<double?>("PRICE", "."),
     FileName = i.ToSourceName()
 }).IsColumnSeparated(',');
 
@@ -27,7 +27,7 @@ var posFileStream = FileStream
 //2. CREATE PORTFOLIOS
 // Portfolio
 var euroCurrencyStream = ProcessContextStream
-    .EfCoreSelect($"{TaskName}: get euroCurrency", i => i.Set<Currency>().Where(c => c.IsoCode == "EUR"))
+    .EfCoreSelect($"{TaskName}: get euroCurrency", (ctx, j) => ctx.Set<Currency>().Where(c => c.IsoCode == "EUR"))
     .EnsureSingle($"{TaskName}: ensures only one euro currency");
 
 var portfolioStream = posFileStream
@@ -47,20 +47,20 @@ var targetSecurityStream = posFileStream
         .Distinct($"{TaskName}: distinct position securities", i => i.SecInternalCode)
         .LookupCurrency($"{TaskName}: get related currency", l => l.SecCur, (l, r) => new { FileRow = l, Currency = r })
         //CreateSecurity(string internalCode, string secType, string secName, int? currencyId, string isin)
-        .Select($"{TaskName}: create target security", i => CreateSecurity(i.FileRow.SecInternalCode,i.FileRow.SecType,
-                        i.FileRow.SecName,i.Currency?.Id,i.FileRow.Isin) )
+        .Select($"{TaskName}: create target security", i => CreateSecurity(i.FileRow.SecInternalCode, i.FileRow.SecType,
+                        i.FileRow.SecName, i.Currency?.Id, i.FileRow.Isin))
         .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 
 var portfolioCompositionStream = posFileStream
-    .CorrelateToSingle($"{TaskName}: get composition portfolio", portfolioStream, (l, r) => 
+    .CorrelateToSingle($"{TaskName}: get composition portfolio", portfolioStream, (l, r) =>
             new PortfolioComposition { Date = l.PositionDate, PortfolioId = r.Id })
     .Distinct($"{TaskName}: distinct composition for a date", i => new { i.PortfolioId, i.Date }, true)
     .EfCoreSave($"{TaskName}: save composition", o => o.SeekOn(i => new { i.PortfolioId, i.Date }));
 
 var positionStream = posFileStream
     .CorrelateToSingle($"{TaskName}: get related security for position", targetSecurityStream, (l, r) => new { FileRow = l, Security = r })
-    .CorrelateToSingle($"{TaskName}: get related composition for position", portfolioCompositionStream, (l, r) 
+    .CorrelateToSingle($"{TaskName}: get related composition for position", portfolioCompositionStream, (l, r)
                         => new { fileRow = l.FileRow, sec = l.Security, compo = r })
     .Select($"{TaskName}: create position", i => new Position
     {
@@ -105,7 +105,7 @@ Security CreateSecurity(string internalCode, string secType, string secName, int
 
     if (security != null)
     {
-        security.InternalCode = (!string.IsNullOrEmpty(isin))?isin:internalCode;
+        security.InternalCode = (!string.IsNullOrEmpty(isin)) ? isin : internalCode;
         security.CurrencyId = currencyId;
         if (security is OptionFuture der)
             der.UnderlyingIsin = isin;

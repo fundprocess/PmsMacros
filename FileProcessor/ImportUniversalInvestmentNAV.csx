@@ -4,7 +4,7 @@
 var navFileDefinition = FlatFileDefinition.Create(i => new
 {
     ShareCode = i.ToColumn<string>("Fund-ID"),
-    ShareName  = i.ToColumn<string>("Short ID"),
+    ShareName = i.ToColumn<string>("Short ID"),
     ShareCurrency = i.ToColumn<string>("Currency"),
     NavDate = i.ToDateColumn("Valuation", "dd.MM.yyyy"),
     NavPerShare = i.ToNumberColumn<double?>("Share value", ","),
@@ -19,21 +19,21 @@ var navFileStream = FileStream
     //     .FixProperty(i=>i.SubFundCode).IfNotNullWith(i=>i.SubFundCode.Substring(0,4))
     //     .FixProperty(i=>i.ShareShortName).IfNotNullWith(i=>i.ShareShortName.Substring(4,2))
     //     )
-    .Where($"{TaskName}: keep valid lines only", i=>!string.IsNullOrEmpty(i.ShareCode));
+    .Where($"{TaskName}: keep valid lines only", i => !string.IsNullOrEmpty(i.ShareCode));
 
-var managedSubFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get subfunds from db", i => i.Set<SubFund>());
+var managedSubFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get subfunds from db", (ctx, j) => ctx.Set<SubFund>());
 
 var managedShareClassStream = navFileStream
     .Distinct($"{TaskName}: distinct share classes", i => new { i.ShareCode }, true)
-    .LookupCurrency($"{TaskName}: get related currency for share class", l => l.ShareCurrency, 
-                            (l, r) => new { l.ShareCode,l.ShareName, CurrencyId = r?.Id })
-    .Lookup($"{TaskName}: lookup related sub fund", managedSubFundStream, i => i.ShareCode.Substring(0,4), i => i.InternalCode, 
+    .LookupCurrency($"{TaskName}: get related currency for share class", l => l.ShareCurrency,
+                            (l, r) => new { l.ShareCode, l.ShareName, CurrencyId = r?.Id })
+    .Lookup($"{TaskName}: lookup related sub fund", managedSubFundStream, i => i.ShareCode.Substring(0, 4), i => i.InternalCode,
                             (l, r) => new { FileRow = l, SubFund = r })
     .Select($"{TaskName}: create share class", i => new ShareClass
     {
         InternalCode = i.FileRow.ShareCode,
         Name = i.FileRow.ShareName,
-        ShortName = i.FileRow.ShareCode.Substring(4,2),
+        ShortName = i.FileRow.ShareCode.Substring(4, 2),
         CurrencyId = i.FileRow.CurrencyId,
         Isin = i.FileRow.ShareCode,
         SubFundId = i.SubFund.Id
@@ -49,7 +49,7 @@ var savedShareClassHvStream = navFileStream
         new { Date = i.NavDate, ShareClassInternalCode =i.ShareCode, Type = HistoricalValueType.NBS, Value = i.NumberOfSharesOutstanding },
     })
     .CorrelateToSingle($"{TaskName}: get hv related share class", managedShareClassStream, (l, r) => new { FromFile = l, FromDb = r })
-    .Where($"{TaskName}: Exclude empty hv", i=>i.FromFile.Value.HasValue)
+    .Where($"{TaskName}: Exclude empty hv", i => i.FromFile.Value.HasValue)
     .Select($"{TaskName}: create share class hv", i => new SecurityHistoricalValue
     {
         SecurityId = i.FromDb.Id,

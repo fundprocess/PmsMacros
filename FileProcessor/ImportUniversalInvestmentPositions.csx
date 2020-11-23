@@ -1,4 +1,3 @@
-
 var positionFileStream = FlatFileDefinition.Create(i => new
 {
     PortfolioCode = i.ToColumn<string>("NumberId"), //Portfolio Code
@@ -12,26 +11,26 @@ var positionFileStream = FlatFileDefinition.Create(i => new
     CurrencyFund = i.ToColumn<string>("Currency Fund"),
     Country = i.ToColumn<string>("Country"),
 
-    MarketValueDirty = i.ToNumberColumn<double?>("Market Value (dirty)",","),
-    MarketValueLoc = i.ToNumberColumn<double?>("Market Value (loc)",","),
-    MarketValueRef = i.ToNumberColumn<double?>("Market Value (Ref.)",","),
-    Quantity = i.ToNumberColumn<double?>("Quantity",","),
+    MarketValueDirty = i.ToNumberColumn<double?>("Market Value (dirty)", ","),
+    MarketValueLoc = i.ToNumberColumn<double?>("Market Value (loc)", ","),
+    MarketValueRef = i.ToNumberColumn<double?>("Market Value (Ref.)", ","),
+    Quantity = i.ToNumberColumn<double?>("Quantity", ","),
 
     AssetLevelI = i.ToColumn<string>("Asset Level I"), //Securities, Cash, Claims / Liabilities
     AssetLevelII = i.ToColumn<string>("Asset Level II"), //Asset Type
 
-    BookPrice = i.ToNumberColumn<double?>("Book Price",","),
-    BookValue = i.ToNumberColumn<double?>("Book Value",","),
-    BookValueLocal = i.ToNumberColumn<double?>("Book Value (Local)",","),
+    BookPrice = i.ToNumberColumn<double?>("Book Price", ","),
+    BookValue = i.ToNumberColumn<double?>("Book Value", ","),
+    BookValueLocal = i.ToNumberColumn<double?>("Book Value (Local)", ","),
 
-    AccruedInterest = i.ToNumberColumn<double?>("Accrued Interest",","),
-    AccruedInterestLocal = i.ToNumberColumn<double?>("Accrued Interest (local)",","),
-    ContractSize = i.ToNumberColumn<double?>("Contractsize",","),
+    AccruedInterest = i.ToNumberColumn<double?>("Accrued Interest", ","),
+    AccruedInterestLocal = i.ToNumberColumn<double?>("Accrued Interest (local)", ","),
+    ContractSize = i.ToNumberColumn<double?>("Contractsize", ","),
     Rating = i.ToColumn<string>("Rating"),
 
     Issuer = i.ToColumn<string>("Issuer"),
-    TNA = i.ToNumberColumn<double?>("NAV",","),
-    
+    TNA = i.ToNumberColumn<double?>("NAV", ","),
+
     FilePath = i.ToSourceName(),
     //----------Classifications
     EquitySector = i.ToColumn<string>("Equity Sector"),
@@ -89,8 +88,8 @@ var positionFileStream = FlatFileDefinition.Create(i => new
 var posFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: Parse positions file", positionFileStream)
     .SetForCorrelation($"{TaskName}: Set correlation key")
-    .Fix($"{TaskName}Fix some columns",o=>o
-        .FixProperty(i=>i.PortfolioCode).IfNotNullWith(i=>i.PortfolioCode.Substring(0,4))
+    .Fix($"{TaskName}Fix some columns", o => o
+         .FixProperty(i => i.PortfolioCode).IfNotNullWith(i => i.PortfolioCode.Substring(0, 4))
         )
     ;
 
@@ -122,7 +121,7 @@ var portfolioStream = posFileStream
     .EfCoreSave($"{TaskName}: save sub fund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 //Portfolio TNA
-var managedSubFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get subfunds from db", i => i.Set<SubFund>());
+var managedSubFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get subfunds from db", (ctx, j) => ctx.Set<SubFund>());
 
 var savedShareClassHvStream = posFileStream
     .Distinct($"{TaskName}: distinct funds for TNA", i => new { i.PortfolioCode, i.ValuationDate }, true)
@@ -142,16 +141,16 @@ var savedShareClassHvStream = posFileStream
 var targetCashStream = posFileStream
     .Where($"{TaskName}: keep cash (non-security) only", i => i.AssetLevelI != "Securities")
     .Distinct($"{TaskName}: distinct positions cash", i => i.SecurityCode)
-    .LookupCountry($"{TaskName}: get related country for cash", l => l.Country, (l, r) => new { FileRow=l, l.SecurityCode, Country = r })
-    .LookupCurrency($"{TaskName}: get related currency for cash", l => l.FileRow.Currency, 
-                                    (l, r) => new { FileRow=l.FileRow, SecurityCode=l.SecurityCode, l.Country, Currency = r })
+    .LookupCountry($"{TaskName}: get related country for cash", l => l.Country, (l, r) => new { FileRow = l, l.SecurityCode, Country = r })
+    .LookupCurrency($"{TaskName}: get related currency for cash", l => l.FileRow.Currency,
+                                    (l, r) => new { FileRow = l.FileRow, SecurityCode = l.SecurityCode, l.Country, Currency = r })
     .Select($"{TaskName}: create cash", i => new Cash()
-        {
-            Name = i.FileRow.Security + "-ValuAnalysis",
-            InternalCode = i.SecurityCode,
-            CurrencyId = i.Currency?.Id,
-            ShortName = i.SecurityCode.Truncate(MaxLengths.ShortName)
-        }
+    {
+        Name = i.FileRow.Security + "-ValuAnalysis",
+        InternalCode = i.SecurityCode,
+        CurrencyId = i.Currency?.Id,
+        ShortName = i.SecurityCode.Truncate(MaxLengths.ShortName)
+    }
     )
     .EfCoreSave($"{TaskName}: save target cash", o => o.SeekOn(i => i.InternalCode)
         .DoNotUpdateIfExists())
@@ -162,12 +161,12 @@ var targetInstrumentStream = posFileStream
     .Where($"{TaskName}: keep security only", i => i.AssetLevelI == "Securities")
     //.ReKey($"{TaskName}: Uniformize target instrument codes", i => new { i.Isin, i.InstrCode }, (i, k) => new { FileRow = i, Key = k })
     .Distinct($"{TaskName}: distinct positions security", i => i.SecurityCode)
-    .LookupCountry($"{TaskName}: get related country", l =>GetCountryIsoFromUiName(l.Country), (l, r) => new { FileRow=l, l.SecurityCode, Country = r })
-    .LookupCurrency($"{TaskName}: get related currency", l => l.FileRow.Currency, 
+    .LookupCountry($"{TaskName}: get related country", l => GetCountryIsoFromUiName(l.Country), (l, r) => new { FileRow = l, l.SecurityCode, Country = r })
+    .LookupCurrency($"{TaskName}: get related currency", l => l.FileRow.Currency,
                     (l, r) => new { l.FileRow, l.SecurityCode, l.Country, Currency = r })
     .Select($"{TaskName}: create instrument", i => CreateSecurity(
-                i.SecurityCode, i.FileRow.Security,i.FileRow.Issuer,i.FileRow.AssetLevelII, i.FileRow.Isin, i.Currency?.Id,i.Country?.Id,
-                i.FileRow.ContractSize,i.FileRow.Rating) as SecurityInstrument)
+                i.SecurityCode, i.FileRow.Security, i.FileRow.Issuer, i.FileRow.AssetLevelII, i.FileRow.Isin, i.Currency?.Id, i.Country?.Id,
+                i.FileRow.ContractSize, i.FileRow.Rating) as SecurityInstrument)
     .EfCoreSave($"{TaskName}: save target instrument", o => o.SeekOn(i => i.InternalCode).AlternativelySeekOn(i => i.Isin)
         .DoNotUpdateIfExists())
     .Select($"{TaskName}: cast instrument into Security", i => i as Security);
@@ -183,8 +182,8 @@ var portfolioCompositionStream = posFileStream
 
 var positionStream = posFileStream
     .CorrelateToSingle($"{TaskName}: get related security for position", targetSecurityStream, (l, r) => new { FileRow = l, Security = r })
-    .CorrelateToSingle($"{TaskName}: get related composition for position", portfolioCompositionStream, (l, r) => 
-                        new { l.FileRow, Security= l.Security, Composition = r })
+    .CorrelateToSingle($"{TaskName}: get related composition for position", portfolioCompositionStream, (l, r) =>
+                        new { l.FileRow, Security = l.Security, Composition = r })
     .Aggregate($"{TaskName}: sum positions duplicates within a file",
         i => new
         {
@@ -247,7 +246,7 @@ var positionStream = posFileStream
                 i.Aggregation.Values.MarketValueInInstrCcy,
                 i.Aggregation.Values.BookCostInPortfolioCcy,
                 i.Aggregation.Values.BookCostInSecurityCcy,
-                
+
                 // i.Aggregation.Values.UnreaResultOnFx,
                 // i.Aggregation.Values.UnreaOnStockExch,
                 // NumberOfAccruedDays = (int)i.Aggregation.Values.NumberOfAccruedDays / i.Aggregation.Values.Count,
@@ -276,17 +275,16 @@ var positionStream = posFileStream
     .EfCoreSave($"{TaskName}: save position", o => o.SeekOn(i => new { i.SecurityId, i.PortfolioCompositionId }));
 
 //Create EQUITY SECTOR CLASSIFICATION
-    // 1. Type definition
+// 1. Type definition
 var equitySectorType = ProcessContextStream
     .Select($"{TaskName}: Create Equity Sector classification type", ctx => new SecurityClassificationType { Code = "EquitySector", 
                 Name = new MultiCultureString { ["en"] = "Equity Sector" },
                 Description = new MultiCultureString { ["en"] = "Equity Sector from Universal Investment" } 
         })
-    .EfCoreSave($"{TaskName}: Save Equity Sector type", o => o.SeekOn(ct => ct.Code)
-        )//.DoNotUpdateIfExists())
+    .EfCoreSave($"{TaskName}: Save Equity Sector type", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure Equity Sector type is single");
 
-    // 2.1 Classification definition: EquitySector
+// 2.1 Classification definition: EquitySector
 var equitySectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct Equity sector", i => i.EquitySector)
     .Select($"{TaskName}: Get related classification type", equitySectorType, (i, ct) => new SecurityClassification
@@ -295,42 +293,42 @@ var equitySectorClassificationStream = posFileStream
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.EquitySector) },
         ClassificationTypeId = ct.Id
     })
-    .EfCoreSave($"{TaskName}: Save Equity Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
-        .DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save Equity Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }).DoNotUpdateIfExists());
 
-    // 2.2 Sub Classification definition: EQUITY SUB SECTOR
+// 2.2 Sub Classification definition: EQUITY SUB SECTOR
 var equitySubSectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct Equity subsector", i => i.EquitySubSector)
-    .CorrelateToSingle($"{TaskName}: lookup parent equity sector class", equitySectorClassificationStream, 
+    .CorrelateToSingle($"{TaskName}: lookup parent equity sector class", equitySectorClassificationStream,
                         (l, r) => new { FileRow = l, ParentClass = r })
     .Select($"{TaskName}: Get related type", equitySectorType, (i, ct) => new SecurityClassification
     {
         ClassificationTypeId = ct.Id,
-        Code = i.FileRow.EquitySubSector,        
-        ParentId = i.ParentClass.Id, 
+        Code = i.FileRow.EquitySubSector,
+        ParentId = i.ParentClass.Id,
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.FileRow.EquitySubSector) }
     })
-    .EfCoreSave($"{TaskName}: Save Equity Sub-Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
-        .DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save Equity Sub-Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }).DoNotUpdateIfExists());
 
-    // 3. Classification assignation
+// 3. Classification assignation
 var equitySubSectorAssignations = targetInstrumentStream
-    .CorrelateToSingle($"{TaskName}: Get related equity sub sector", equitySubSectorClassificationStream, 
+    .CorrelateToSingle($"{TaskName}: Get related equity sub sector", equitySubSectorClassificationStream,
         (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
 
 
 //-------------------STOXX SECTOR CLASSIFICATION-------------------
-    // 1. Type definition
+// 1. Type definition
 var stoxxSectorType = ProcessContextStream
-    .Select($"{TaskName}: Create stoxx Sector classification type", ctx => new SecurityClassificationType { Code = "stoxxSector", 
-                Name = new MultiCultureString { ["en"] = "STOXX Sector" },
-                Description = new MultiCultureString { ["en"] = "STOXX Sector from Universal Investment" } 
-        })
+    .Select($"{TaskName}: Create stoxx Sector classification type", ctx => new SecurityClassificationType
+    {
+        Code = "stoxxSector",
+        Name = new MultiCultureString { ["en"] = "STOXX Sector" },
+        Description = new MultiCultureString { ["en"] = "STOXX Sector from Universal Investment" }
+    })
     .EfCoreSave($"{TaskName}: Save STOXX Sector type", o => o.SeekOn(ct => ct.Code)
     .DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure STOXX Sector type is single");
 
-    // 2. Classification definition: StoxxSector
+// 2. Classification definition: StoxxSector
 var stoxxSectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct stoxx sector", i => i.StoxxSector)
     .Select($"{TaskName}: Get stoxx classification type", stoxxSectorType, (i, ct) => new SecurityClassification
@@ -341,24 +339,26 @@ var stoxxSectorClassificationStream = posFileStream
     })
     .EfCoreSave($"{TaskName}: Save stoxx Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
     .DoNotUpdateIfExists());
-    // 3. Classification assignation
+// 3. Classification assignation
 var stoxxSectorAssignations = targetInstrumentStream
-    .CorrelateToSingle($"{TaskName}: Get related stoxx sector", stoxxSectorClassificationStream, 
+    .CorrelateToSingle($"{TaskName}: Get related stoxx sector", stoxxSectorClassificationStream,
         (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
 
 
 //-------------------RATING GRADE-------------------
- // 1. Type definition
+// 1. Type definition
 var ratingGradeType = ProcessContextStream
-    .Select($"{TaskName}: Create rating grade classification type", ctx => new SecurityClassificationType { Code = "ratingGrade", 
-                Name = new MultiCultureString { ["en"] = "Rating Grade" },
-                Description = new MultiCultureString { ["en"] = "rating grade from Universal Investment" } 
-        })
+    .Select($"{TaskName}: Create rating grade classification type", ctx => new SecurityClassificationType
+    {
+        Code = "ratingGrade",
+        Name = new MultiCultureString { ["en"] = "Rating Grade" },
+        Description = new MultiCultureString { ["en"] = "rating grade from Universal Investment" }
+    })
     .EfCoreSave($"{TaskName}: Save rating grade type", o => o.SeekOn(ct => ct.Code)
     .DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure rating grade type is single");
 
-    // 2. Classification definition: ratingGrade
+// 2. Classification definition: ratingGrade
 var ratingGradeClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct rating grade", i => i.RatingGrade)
     .Select($"{TaskName}: Get rating grade classification type", ratingGradeType, (i, ct) => new SecurityClassification
@@ -369,9 +369,9 @@ var ratingGradeClassificationStream = posFileStream
     })
     .EfCoreSave($"{TaskName}: Save Rating Grade classification", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
     .DoNotUpdateIfExists());
-    // 3. Classification assignation
+// 3. Classification assignation
 var ratingGradeAssignations = targetInstrumentStream
-    .CorrelateToSingle($"{TaskName}: Get related rating grade", ratingGradeClassificationStream, 
+    .CorrelateToSingle($"{TaskName}: Get related rating grade", ratingGradeClassificationStream,
         (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
 
 //-------------------SAVE CLASSIFICATIONS-----------
@@ -382,12 +382,12 @@ var classificationOfSecurityStream = equitySubSectorAssignations
      .DoNotUpdateIfExists());
 
 return FileStream.WaitWhenDone($"{TaskName}: wait until all positions/classifications of security are saved",
-            positionStream,classificationOfSecurityStream);
+            positionStream, classificationOfSecurityStream);
 
 //----------HELPERS-----------------
 
-Security CreateSecurity(string securityCode, string secName,string issuer,string secType, string isin, int? currencyId, int? countryId
-                        , double? contractsize,string rating)
+Security CreateSecurity(string securityCode, string secName, string issuer, string secType, string isin, int? currencyId, int? countryId
+                        , double? contractsize, string rating)
 {
     Security security = null;
     switch (secType)
@@ -399,33 +399,33 @@ Security CreateSecurity(string securityCode, string secName,string issuer,string
             security = new Bond();
             break;
         default:
-            throw new Exception("Not implemented: "+secType);
+            throw new Exception("Not implemented: " + secType);
     }
 
     security.InternalCode = securityCode;
     security.CurrencyId = currencyId;
     security.Name = secName;
-    
+
     if (security is Equity equity)
         security.Name = issuer;
-    security.ShortName =security.Name.Truncate(MaxLengths.ShortName);
+    security.ShortName = security.Name.Truncate(MaxLengths.ShortName);
 
     if (security is SecurityInstrument securityInstrument)
         securityInstrument.Isin = isin;
-    
-        // if (security is Derivative der)
-        //     der.MaturityDate = maturityDate;
-        // if (security is StandardDerivative standardDerivative)
-        //     standardDerivative.Nominal = nominal;
-        // if (security is OptionFuture optFut)
-        //     optFut.UnderlyingIsin = instrumentIsin;
-        // if (security is Bond bond)
-        // {
-        //     bond.CouponFrequency = MapPeriodicity(couponPeriodicity);
-        // }
-    
+
+    // if (security is Derivative der)
+    //     der.MaturityDate = maturityDate;
+    // if (security is StandardDerivative standardDerivative)
+    //     standardDerivative.Nominal = nominal;
+    // if (security is OptionFuture optFut)
+    //     optFut.UnderlyingIsin = instrumentIsin;
+    // if (security is Bond bond)
+    // {
+    //     bond.CouponFrequency = MapPeriodicity(couponPeriodicity);
+    // }
+
     if (security is RegularSecurity regularSecurity)
-    { 
+    {
         regularSecurity.PricingFrequency = FrequencyType.Daily;
         regularSecurity.CountryId = countryId;
     }
@@ -678,6 +678,6 @@ string GetCountryIsoFromUiName(string countryLabel)
         ["Zimbabwe"] = "ZW",
     };
     if (!fromCountryNameToAlpha2Dictionary.ContainsKey(countryLabel))
-        throw new Exception("Please add the following country label to the country mapping list in the macro: "+countryLabel);
+        throw new Exception("Please add the following country label to the country mapping list in the macro: " + countryLabel);
     return fromCountryNameToAlpha2Dictionary[countryLabel];
 }

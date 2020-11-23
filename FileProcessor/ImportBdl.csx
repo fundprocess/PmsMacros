@@ -1,14 +1,39 @@
 #region Setup file definition
+class BdlCustidNode
+{
+    public string ContId { get; set; } // <cont ContId="02812601.1001">
+    public string CollectionId{get;set;} //<CollectionId>53440040.3</CollectionId>
+    public string Domicile { get; set; } // <Domicile>MC</Domicile>
+    public string DefaultCcy { get; set; } // <DefaultCcy>EUR</DefaultCcy>
+    public DateTime OpenDate {get;set;} // <OpenDate>2013-04-04</OpenDate>
+    public string TaxDomicile {get;set;} //<TaxDomicile>MC</TaxDomicile>
+    public int? EusdStatus {get;set;} //<EusdStatus>2</EusdStatus>
+    public string InitMifid {get;set;} //<InitMifid>Privé (01)</InitMifid>
+    public int? FinKnowl {get;set;} //<FinKnowl>5</FinKnowl>
+    public int? FinExp {get;set;} //<FinExp>5</FinExp>
+}
 class BdlSecPosNode // /response/response/cont/pos/Secpos
 {
     public string FileName { get; set; }
     public string ContId { get; set; } // /response/response/cont/@ContId
+    public string PosId { get; set; }
     public string SecurityCode { get; set; } // <SecurityCode>24493476</SecurityCode>
+    public string Isin { get; set; }//<Isin>LU0947895834</Isin>
     public double AssetQty { get; set; } // <AssetQty>2190</AssetQty>
     public DateTime AssBalDate { get; set; } // <AssBalDate>2018-07-04</AssBalDate>
+    public string PriceCcy {get;set;}
+    public double? UnitPrice { get; set; }
+    public DateTime PriceDate { get; set; }
+    public double? CostPrice { get; set; } //<CostPrice>599.1572166</CostPrice>
+    public string aveCostCcy { get; set; } //<aveCostCcy>EUR</aveCostCcy>
+    public double? UnReEur {get;set;} //<UnReEur>239634.23</UnReEur>
     public double TotSec { get; set; } // <TotSec>171696.00</TotSec>
+    public string TotSecCcy {get;set; }//<TotSecCcy>EUR</TotSecCcy>
     public double TotRefCcy { get; set; } // <TotRefCcy>171696.00</TotRefCcy>
-    public string PosId { get; set; }
+    public double? TotInClientCcy { get; set; } //<TotInClientCcy>1064074.56</TotInClientCcy>
+    public double? AccrIntRef { get; set; } //<AccrIntRef>0</AccrIntRef>
+    public string ClientCcy {get;set; } //<ClientCcy>EUR</ClientCcy>
+    public string RefCcy {get;set; } //<RefCcy>EUR</RefCcy>
 }
 class BdlSecBaseNode // <Secbase>
 {
@@ -19,95 +44,350 @@ class BdlSecBaseNode // <Secbase>
     public string Bloomberg { get; set; } // <Bloomberg/>
     public string Wkn { get; set; } // <Wkn>A1CV0R</Wkn>
     public string SecName { get; set; } // <SecName>Moneta Asset Management Moneta Long Short - A CAP</SecName>
-    public int InstrType { get; set; } // <InstrType>880</InstrType>
+    public string MifidPTyp { get; set; } //<MifidPTyp>Equities</MifidPTyp>  
+    public string CaaClassif  { get; set; }  
+    public string CFIclass { get; set; } //<CFIclass>ESVUFN</CFIclass>
+    public int? InstrType { get; set; } // <InstrType>880</InstrType>
+    public int? InstrTypeL1 { get; set; } // <InstrTypeL1>15218</InstrTypeL1>
+    public int? InstrTypeL2 { get; set; } // <InstrTypeL2>15219</InstrTypeL2>
+    public string EconSector { get; set; } //<EconSector>95</EconSector>
+    public string GeoSector { get; set; } //<GeoSector>01</GeoSector>
+    public string WthldTax { get; set; } //<WthldTax>10012</WthldTax>
+    public string TradingPlace { get; set; }
+    public string EusdStatA { get; set; }
     public string Domicile { get; set; } // <Domicile>FR</Domicile>
     public string InstrCcy { get; set; } // <InstrCcy>EUR</InstrCcy>
+
+    public string PriceUnit {get;set;}//<PriceUnit>mon</PriceUnit>
+    public int QuotMode{get;set;} //<QuotMode>11</QuotMode>
+    public string PriceCcy{get;set;} //<PriceCcy>EUR</PriceCcy>
+    public double? Price{get;set;} // <Price>18.9</Price>
+    public DateTime? PriceDate{get;set;}// <PriceDate>2020-11-17</PriceDate>
+
+    public string Issuer{get;set;} // <Issuer>Compagnie des Alpes SA</Issuer>
+    public string IssueDomic{get;set;} //<IssueDomic>FR</IssueDomic>
+
+    public double? IntrRate {get;set;} // <IntrRate>5.5</IntrRate>
+    public double? YieldToMat{get;set;} //<YieldToMat>0.081287</YieldToMat>
+    public double? FaceAmt{get;set;} //<FaceAmt>1000</FaceAmt>
+    public DateTime? MatRdmptDate{get;set;} //<MatRdmptDate>2044-06-27</MatRdmptDate>
+    public DateTime? NextCoupDate{get;set;} //<NextCoupDate>2020-06-27</NextCoupDate>
+
     public string ValFreq { get; set; } // <ValFreq>7310</ValFreq> 7310=daily, 7312=weekly
     public string MifidRisk { get; set; } // <MifidRisk>Risk Level 4 (04)</MifidRisk>
-    public string EurAmStyle { get; set; }   // <EurAmStyle>AMERICAN</EurAmStyle>
+    public string MifidComplx{get;set;} //    <MifidComplx>Not complex (02)</MifidComplx>
+    public string Mifid2Complx{get;set;} //    <Mifid2Complx>NON-COMPLEX PRODUCTS</Mifid2Complx>
+   
+    public string EurAmStyle { get; set; }   // <EurAmStyle>AMERICAN</EurAmStyle> or <EurAmStyle>EUROPEAN</EurAmStyle>
     public string UnderlAsset { get; set; }   // <UnderlAsset>US4642876555</UnderlAsset>
     public double? ContrSize { get; set; }   // <ContrSize>100</ContrSize>
     public double? StrikePrice { get; set; }   // <StrikePrice>145</StrikePrice>
-    public string EconSector { get; set; }   // <EconSector>84</EconSector>
-
-}
-class BdlCustidNode
-{
-    public string ContId { get; set; } // <cont ContId="02812601.1001">
-    public string Domicile { get; set; } // <Domicile>MC</Domicile>
-    public string DefaultCcy { get; set; } // <DefaultCcy>EUR</DefaultCcy>
 }
 class BdlCashposNode // /response/response/cont/pos/Cashpos
 {
     public string ContId { get; set; } // /response/response/cont/@ContId
+    public string PosId { get; internal set; }
     public string Iban { get; set; } // <Iban>LU200080281260102005</Iban>
     public string AssetCcy { get; set; } // <AssetCcy>USD</AssetCcy>
+    public string ContractNr { get; set; } //<ContractNr>2700738</ContractNr>
+    
     public DateTime PosBalDate { get; set; } // <PosBalDate>2018-07-04</PosBalDate>
     public double PosBalRefCcy { get; set; } // <PosBalRefCcy>20.37</PosBalRefCcy>
-    public double AccrInt { get; set; } // <AccrInt>0.00</AccrInt>
-    public string PosId { get; internal set; }
+    
+    public int AssetType {get;set;} // <AssetType>17063</AssetType>
+    public double balBook { get; set; } // <balBook>7585.20</balBook>
+    public double balVal { get; set; } // <balBook>7585.20</balBook>
+
+    public double? AccrInt { get; set; } // <AccrInt>0.00</AccrInt>
     public string FileName { get; set; }
 }
+
+class BdlSectransNode 
+{
+    public string ContId { get; set; } // /response/response/cont/@ContId
+    public string PosId { get; internal set; }
+    public string ContIdSec {get;set;}// <ContIdSec>03998376.1001</ContIdSec>
+    public string OrderNr {get;set;}// <OrderNr>283408849</OrderNr>
+    public string SecurityCode {get;set;}// <SecurityCode>74112443</SecurityCode>
+    public string Isin {get;set;}// <Isin>IE00BF5H5052</Isin>
+    public string OrdTypId {get;set;}// <OrdTypId>140022</OrdTypId>
+    public DateTime OrderDate {get;set;}// <OrderDate>2020-11-16</OrderDate>
+    public DateTime ExecDate {get;set;}// <ExecDate>2020-11-16</ExecDate>
+    public string TradingPlace {get;set;}// <TradingPlace>TA_1583123</TradingPlace>
+    public DateTime ValDate {get;set;}// <ValDate>2020-11-19</ValDate>
+    public double SecQty {get;set;}// <SecQty>76</SecQty>
+    public double ExecPrice {get;set;}// <ExecPrice>156.76</ExecPrice>
+    public string ExecPriceCcy {get;set;}// <ExecPriceCcy>EUR</ExecPriceCcy>
+    public string TradeCcy {get;set;}// <TradeCcy>EUR</TradeCcy>
+    public string Counterparty {get;set;}// <Counterparty>BROWN BROTHERS HARRIMAN FUND ADMINISTRATION SERVICES (IRELAND) LTD</Counterparty>
+    public double? GrossAmount {get;set;}// <GrossAmount>-11913.76</GrossAmount>
+
+    public double? NetAmount {get;set;}// <NetAmount>-11913.76</NetAmount>
+    public string BookCcy {get;set;}// <BookCcy>EUR</BookCcy>
+    public double? BankFee {get;set;} //<BankFee>-82.9</BankFee>
+    public string Iban {get;set;}// <Iban>LU870080399837602001</Iban>
+    public double? Xrate {get;set;}// <Xrate>1.183921</Xrate>
+    public string DepositaryBic {get;set;}// <DepositaryBic>CHASLULX</DepositaryBic>
+    public string DepositaryName {get;set;}// <DepositaryName>JPMORGAN BANK Luxembourg SA</DepositaryName>
+    public string Communication1{get;set;} //<Communication1>Subscription (Funds) Equity funds</Communication1>
+    
+    public string FileName { get; set; }
+}
+class BdlCashtrNode
+{
+    public string ContId { get; set; } // /response/response/cont/@ContId
+    public string PosId { get; internal set; }
+    public string Iban{get;set;} // <Iban>LU880080370142002001</Iban>
+    public string OrderNr{get;set;} // <OrderNr>283474336</OrderNr>
+    public string OrdTypId{get;set;} // <OrdTypId>52011</OrdTypId>
+    public string ExternalRef{get;set;} // <ExternalRef/>
+    public string BookText{get;set;} // <BookText>FX Spot for PB: USD -670.94 (EUR/USD 1.188364)</BookText>
+    public string ContractNr{get;set;} // <ContractNr/>
+    public double? GrossAmt{get;set;} // <GrossAmt/>
+    public double? GrossAmtCcy{get;set;} // <GrossAmtCcy/>
+    public double? Xrate{get;set;} // <Xrate>1.188364</Xrate>
+    public double? fwdRate{get;set;} // <fwdRate>1.188364</fwdRate>
+    public double? NdfShortAmt{get;set;} // <NdfShortAmt>670.94</NdfShortAmt>
+    public string NdfShortAmtCcy{get;set;} // <NdfShortAmtCcy>USD</NdfShortAmtCcy>
+    public double? NdfLongAmt{get;set;} // <NdfLongAmt>564.59</NdfLongAmt>
+    public string NdfLongAmtCcy{get;set;} // <NdfLongAmtCcy>EUR</NdfLongAmtCcy>
+    public double? NdfValuePrice{get;set;} // <NdfValuePrice>1.186200</NdfValuePrice>
+    public DateTime? NdfConclDate{get;set;} // <NdfConclDate>2020-11-17</NdfConclDate>
+    public string BookCcy{get;set;} // <BookCcy>EUR</BookCcy>
+    public double? FeeComm{get;set;} // <FeeComm/>
+    public double? NetAmount{get;set;} // <NetAmount>564.59</NetAmount>
+    public DateTime bookDate{get;set;} // <bookDate>2020-11-17</bookDate>
+    public DateTime ValDate{get;set;} // <ValDate>2020-11-19</ValDate>
+    public string ReverseInd{get;set;} // <ReverseInd>Y</ReverseInd>
+
+    public string Communication1{get;set;} // <Communication1>FRAIS D'ADMINISTRATION + PRIME DE</Communication1>
+    public string Communication2{get;set;} // <Communication2>RISQUE  1ER TRIM 2020</Communication2>
+    public string Communication3{get;set;} 
+    public string Communication4{get;set;} 
+    
+    public string PayBenIban{get;set;}  //<PayBenIban>BE10363050436404</PayBenIban>
+    public string PayBenAddr1{get;set;} //<PayBenAddr1>VITIS LIFE SA</PayBenAddr1>
+    public string PayBenAddr2{get;set;} //<PayBenAddr2>52 BOULEVARD MARCEL CAHEN</PayBenAddr2>
+    public string PayBenAddr3{get;set;} //<PayBenAddr3>L-1311 LUXEMBOURG</PayBenAddr3>
+    public string PayBenAddr4{get;set;} //<PayBenAddr4/>
+}
+class BdlXratesNode //<response><payload><parameters><Xrates>
+{
+     public string Currency{get;set;}//<Currency>AED</Currency>
+     public double Xrate{get;set;}//<Xrate>4.315217</Xrate>
+     public int Rounding{get;set;}//<Rounding>2</Rounding>
+     public string Display{get;set;}//<Display>1 EUR = 4.315217 AED</Display>
+     public double RevsXrate{get;set;}//<RevsXrate>0.231738</RevsXrate>
+     public DateTime XrateDate{get;set;}//<XrateDate>2020-10-28</XrateDate>
+}
+class BdlTableNode //<response><payload><parameters><Table>
+{
+    public string TableCode{get;set;} //<TableCode>APPLICFORM</TableCode>
+    public string KeyVal {get;set;} //<KeyVal>7333</KeyVal>
+    public string Descr {get;set;} //<Descr>No form</Descr>
+}
+
 class BdlFileDefinition : XmlFileDefinition
 {
     public BdlFileDefinition()
     {
         this.AddNodeDefinition(XmlNodeDefinition.Create("secbase", "/response/response/cont/pos/Secbase", i => new BdlSecBaseNode
-        {
-            Bloomberg = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Bloomberg"),
-            Domicile = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Domicile"),
-            InstrCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/InstrCcy"),
-            InstrType = i.ToXPathQuery<int>("/response/response/cont/pos/Secbase/InstrType"),
-            Isin = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Isin"),
-            MifidRisk = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/MifidRisk"),
-            Reuters = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Reuters"),
-            SecName = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/SecName"),
-            SecurityCode = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/SecurityCode"),
-            Telekurs = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Telekurs"),
+        {   
+            SecurityCode  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/SecurityCode"),
+            Isin  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/Isin"),
+            Telekurs  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/Telekurs"),
+            Reuters  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/Reuters"),
+            Bloomberg  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/Bloomberg"),
+            Wkn  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/Wkn"),
+            SecName  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/SecName"),
+            MifidPTyp  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/MifidPTyp"),
+            CFIclass  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/CFIclass"),
+            CaaClassif = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/CaaClassif"),
+            InstrType  = i.ToXPathQuery<int?>("/response/response/cont/pos/Secbase/InstrType"),
+            InstrTypeL1  = i.ToXPathQuery<int?>("/response/response/cont/pos/Secbase/InstrTypeL1"),
+            InstrTypeL2  = i.ToXPathQuery<int?>("/response/response/cont/pos/Secbase/InstrTypeL2"),
+            EusdStatA = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EusdStatA"), 
+            TradingPlace = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/TradingPlace"), 
+            WthldTax = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/WthldTax"), 
+            EconSector  = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EconSector"),
+            GeoSector  = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/GeoSector"),
+            Domicile  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/Domicile"),
+            InstrCcy  = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/InstrCcy"),
+
+            PriceUnit = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/PriceUnit"),
+            QuotMode = i.ToXPathQuery<int>("/response/response/cont/pos/Secbase/QuotMode"),
+            PriceCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/PriceCcy"),
+            Price = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/Price"),
+            PriceDate = i.ToXPathQuery<DateTime?>("/response/response/cont/pos/Secbase/PriceDate"),
+
+            Issuer = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Issuer"),
+            IssueDomic = i.ToXPathQuery<string >("/response/response/cont/pos/Secbase/IssueDomic"),
+
+            IntrRate = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/IntrRate"),
+            YieldToMat = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/YieldToMat"),
+            FaceAmt = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/FaceAmt"),
+            MatRdmptDate = i.ToXPathQuery<DateTime?>("/response/response/cont/pos/Secbase/MatRdmptDate"),
+            NextCoupDate = i.ToXPathQuery<DateTime?>("/response/response/cont/pos/Secbase/NextCoupDate"),
+
             ValFreq = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/ValFreq"),
-            EurAmStyle = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EurAmStyle"),
+            MifidRisk = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/MifidRisk"),
+            MifidComplx = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/MifidComplx"),
+            Mifid2Complx = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Mifid2Complx"),
+
+            EurAmStyle  = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EurAmStyle "),
             UnderlAsset = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/UnderlAsset"),
-            Wkn = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/Wkn"),
-            ContrSize = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/ContrSize"),
+            ContrSize  = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/ContrSize "),
             StrikePrice = i.ToXPathQuery<double?>("/response/response/cont/pos/Secbase/StrikePrice"),
-            EconSector = i.ToXPathQuery<string>("/response/response/cont/pos/Secbase/EconSector")
         }));
         this.AddNodeDefinition(XmlNodeDefinition.Create("secpos", "/response/response/cont/pos/Secpos", i => new BdlSecPosNode
         {
             PosId = i.ToXPathQuery<string>("/response/response/cont/pos/@PosId"),
             ContId = i.ToXPathQuery<string>("/response/response/cont/@ContId"),
-            AssBalDate = i.ToXPathQuery<DateTime>("/response/response/cont/pos/Secpos/AssBalDate"),
+            SecurityCode  = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/SecurityCode"),
+            Isin = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/Isin"),
             AssetQty = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/AssetQty"),
-            SecurityCode = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/SecurityCode"),
-            TotRefCcy = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/TotRefCcy"),
+            AssBalDate = i.ToXPathQuery<DateTime>("/response/response/cont/pos/Secpos/AssBalDate"),
+            PriceCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/PriceCcy"),
+            UnitPrice = i.ToXPathQuery<double?>("/response/response/cont/pos/Secpos/UnitPrice"),
+            PriceDate = i.ToXPathQuery<DateTime>("/response/response/cont/pos/Secpos/PriceDate"),
+            CostPrice = i.ToXPathQuery<double?>("/response/response/cont/pos/Secpos/CostPrice"),
+            aveCostCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/aveCostCcy"),
+            UnReEur  = i.ToXPathQuery<double?>("/response/response/cont/pos/Secpos/UnReEur"),
             TotSec = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/TotSec"),
+            TotSecCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/TotSecCcy"),
+            TotRefCcy = i.ToXPathQuery<double>("/response/response/cont/pos/Secpos/TotRefCcy"),
+            TotInClientCcy = i.ToXPathQuery<double?>("/response/response/cont/pos/Secpos/TotInClientCcy"),
+            AccrIntRef = i.ToXPathQuery<double?>("/response/response/cont/pos/Secpos/AccrIntRef"),
+            ClientCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/ClientCcy"),
+            RefCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Secpos/RefCcy"),
             FileName = i.ToSourceName()
         }));
         this.AddNodeDefinition(XmlNodeDefinition.Create("cashpos", "/response/response/cont/pos/Cashpos", i => new BdlCashposNode
         {
-            PosId = i.ToXPathQuery<string>("/response/response/cont/pos/@PosId"),
             ContId = i.ToXPathQuery<string>("/response/response/cont/@ContId"),
-            AccrInt = i.ToXPathQuery<double>("/response/response/cont/pos/Cashpos/AccrInt"),
-            AssetCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Cashpos/AssetCcy"),
+            PosId = i.ToXPathQuery<string>("/response/response/cont/pos/@PosId"),
             Iban = i.ToXPathQuery<string>("/response/response/cont/pos/Cashpos/Iban"),
+            AssetCcy = i.ToXPathQuery<string>("/response/response/cont/pos/Cashpos/AssetCcy"),
+            AssetType = i.ToXPathQuery<int>("/response/response/cont/pos/Cashpos/AssetType"),
+            ContractNr = i.ToXPathQuery<string>("/response/response/cont/pos/Cashpos/ContractNr"),
             PosBalDate = i.ToXPathQuery<DateTime>("/response/response/cont/pos/Cashpos/PosBalDate"),
             PosBalRefCcy = i.ToXPathQuery<double>("/response/response/cont/pos/Cashpos/PosBalRefCcy"),
+            balBook = i.ToXPathQuery<double>("/response/response/cont/pos/Cashpos/balBook"),
+            balVal = i.ToXPathQuery<double>("/response/response/cont/pos/Cashpos/balVal"),
+            AccrInt = i.ToXPathQuery<double?>("/response/response/cont/pos/Cashpos/AccrInt"),
             FileName = i.ToSourceName()
         }));
         this.AddNodeDefinition(XmlNodeDefinition.Create("custid", "/response/response/cont/Custid", i => new BdlCustidNode
         {
             ContId = i.ToXPathQuery<string>("/response/response/cont/@ContId"),
+            CollectionId = i.ToXPathQuery<string>("/response/response/cont/Custid/CollectionId"),
             DefaultCcy = i.ToXPathQuery<string>("/response/response/cont/Custid/DefaultCcy"),
-            Domicile = i.ToXPathQuery<string>("/response/response/cont/Custid/Domicile")
+            Domicile = i.ToXPathQuery<string>("/response/response/cont/Custid/Domicile"),
+            OpenDate = i.ToXPathQuery<DateTime>("/response/response/cont/Custid/OpenDate"),
+            TaxDomicile = i.ToXPathQuery<string>("/response/response/cont/Custid/TaxDomicile"),
+            EusdStatus = i.ToXPathQuery<int?>("/response/response/cont/Custid/EusdStatus"),
+            InitMifid = i.ToXPathQuery<string>("/response/response/cont/Custid/InitMifid"),
+            FinKnowl = i.ToXPathQuery<int?>("/response/response/cont/Custid/FinKnowl"),
+            FinExp = i.ToXPathQuery<int?>("/response/response/cont/Custid/FinExp"),  
+        }));
+
+        this.AddNodeDefinition(XmlNodeDefinition.Create("Sectrans", "/response/response/cont/pos/Sectrans", i => new BdlSectransNode
+        {
+            ContId = i.ToXPathQuery<string>("/response/response/cont/@ContId"),
+            PosId = i.ToXPathQuery<string>("/response/response/cont/pos/@PosId"),
+            ContIdSec =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/ContIdSec"),
+            OrderNr =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/OrderNr"),
+            SecurityCode =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/SecurityCode"),
+            Isin =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/Isin"),
+            OrdTypId =i.ToXPathQuery<string>("/response/response/cont/pos/Sectrans/OrdTypId"),
+            OrderDate =i.ToXPathQuery<DateTime >("/response/response/cont/pos/Sectrans/OrderDate"),
+            ExecDate =i.ToXPathQuery<DateTime >("/response/response/cont/pos/Sectrans/ExecDate"),
+            TradingPlace =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/TradingPlace"),
+            ValDate =i.ToXPathQuery<DateTime >("/response/response/cont/pos/Sectrans/ValDate"),
+            SecQty =i.ToXPathQuery<double >("/response/response/cont/pos/Sectrans/SecQty"),
+            ExecPrice =i.ToXPathQuery<double >("/response/response/cont/pos/Sectrans/ExecPrice"),
+            ExecPriceCcy =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/ExecPriceCcy"),
+            TradeCcy =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/TradeCcy"),
+            Counterparty =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/Counterparty"),
+            GrossAmount =i.ToXPathQuery<double?>("/response/response/cont/pos/Sectrans/GrossAmount"),
+            NetAmount =i.ToXPathQuery<double?>("/response/response/cont/pos/Sectrans/NetAmount"),
+            BankFee =i.ToXPathQuery<double?>("/response/response/cont/pos/Sectrans/BankFee"),
+            BookCcy =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/BookCcy"),
+            Iban =i.ToXPathQuery<string >("/response/response/cont/pos/Sectrans/Iban"),
+            Xrate =i.ToXPathQuery<double?>("/response/response/cont/pos/Sectrans/Xrate"),
+            DepositaryBic = i.ToXPathQuery<string>("/response/response/cont/pos/Sectrans/DepositaryBic"),
+            DepositaryName = i.ToXPathQuery<string>("/response/response/cont/pos/Sectrans/DepositaryName"),
+            Communication1 = i.ToXPathQuery<string>("/response/response/cont/pos/Sectrans/Communication1"),
+        }));
+
+
+        this.AddNodeDefinition(XmlNodeDefinition.Create("Cashtr", "/response/response/cont/pos/Cashtr", i => new BdlCashtrNode
+        {
+            ContId = i.ToXPathQuery<string>("/response/response/cont/@ContId"),
+            PosId = i.ToXPathQuery<string>("/response/response/cont/pos/@PosId"),
+            Iban=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/Iban"),
+            OrderNr=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/OrderNr"),
+            OrdTypId=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/OrdTypId"),
+            ExternalRef=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/ExternalRef"),
+            BookText=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/BookText"),
+            ContractNr=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/ContractNr"),
+            GrossAmt=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/GrossAmt"),
+            GrossAmtCcy=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/GrossAmtCcy"),
+            Xrate=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/Xrate"),
+            fwdRate=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/fwdRate"),
+            NdfShortAmt=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/NdfShortAmt"),
+            NdfShortAmtCcy=i.ToXPathQuery<string>("/response/response/cont/pos/Cashtr/NdfShortAmtCcy"),
+            NdfLongAmt=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/NdfLongAmt"),
+            NdfLongAmtCcy=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/NdfLongAmtCcy"),
+            NdfValuePrice=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/NdfValuePrice"),
+            NdfConclDate=i.ToXPathQuery<DateTime?>("/response/response/cont/pos/Cashtr/NdfConclDate"),
+            BookCcy=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/BookCcy"),
+            FeeComm=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/FeeComm"),
+            NetAmount=i.ToXPathQuery<double?>("/response/response/cont/pos/Cashtr/NetAmount"),
+            bookDate=i.ToXPathQuery<DateTime >("/response/response/cont/pos/Cashtr/bookDate"),
+            ValDate=i.ToXPathQuery<DateTime >("/response/response/cont/pos/Cashtr/ValDate"),
+            ReverseInd=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/ReverseInd"),
+
+            Communication1=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/Communication1"),
+            Communication2=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/Communication2"),
+            Communication3=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/Communication3"),
+            Communication4=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/Communication4"),
+
+            PayBenIban=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/PayBenIban"),
+            PayBenAddr1=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/PayBenAddr1"),
+            PayBenAddr2=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/PayBenAddr2"),
+            PayBenAddr3=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/PayBenAddr3"),
+            PayBenAddr4=i.ToXPathQuery<string >("/response/response/cont/pos/Cashtr/PayBenAddr4"),
+        }));
+
+        this.AddNodeDefinition(XmlNodeDefinition.Create("Xrates", "/response/response/payload/parameters/Xrates", i => new BdlXratesNode
+        {
+            Currency = i.ToXPathQuery<string>("/response/response/payload/parameters/Xrates/Currency"),
+            Xrate = i.ToXPathQuery<double>("/response/response/payload/parameters/Xrates/Xrate"),
+            Rounding = i.ToXPathQuery<int>("/response/response/payload/parameters/Xrates/Rounding"),
+            Display = i.ToXPathQuery<string>("/response/response/payload/parameters/Xrates/Display"),
+            RevsXrate = i.ToXPathQuery<double>("/response/response/payload/parameters/Xrates/RevsXrate"),
+            XrateDate = i.ToXPathQuery<DateTime>("/response/response/payload/parameters/Xrates/XrateDate"),            
+        }));
+
+        this.AddNodeDefinition(XmlNodeDefinition.Create("Table", "/response/response/payload/parameters/Table", i => new BdlTableNode
+        {
+            TableCode = i.ToXPathQuery<string>("/response/response/payload/parameters/Table/TableCode"),
+            KeyVal  = i.ToXPathQuery<string>("/response/response/payload/parameters/Table/KeyVal"),
+            Descr  = i.ToXPathQuery<string>("/response/response/payload/parameters/Table/Descr"),
         }));
     }
 }
 #endregion
 
-#region get sources
-
+#region GET FILE STREAMS
 var nodesStream = FileStream
     .CrossApplyXmlFile($"{TaskName}: parse input file", new BdlFileDefinition());
+
+var filePortfoliosStream = nodesStream
+    .XmlNodeOfType<BdlCustidNode>($"{TaskName}: list only portfolios")
+    .SetForCorrelation($"{TaskName}: correlate portfolios")
+    .Distinct($"{TaskName}: distinct portfolio", i => i.ContId);
 
 var fileTargetSecuritiesStream = nodesStream
     .XmlNodeOfType<BdlSecBaseNode>($"{TaskName}: list only target securities")
@@ -136,30 +416,264 @@ var fileCashPositionsStream = nodesStream
     .Distinct($"{TaskName}: exclude cash positions duplicates", i => new { i.PosBalDate, i.ContId, i.Iban })
     .Fix($"{TaskName}: correct cash fields", o => o.FixProperty(i => i.Iban).IfNullWith(i => $"BDL_{i.ContId}_{i.AssetCcy}"));
 
-var filePortfoliosStream = nodesStream
-    .XmlNodeOfType<BdlCustidNode>($"{TaskName}: list only portfolios")
-    .SetForCorrelation($"{TaskName}: correlate portfolios")
-    .Distinct($"{TaskName}: distinct portfolio", i => i.ContId);
+var fileSecurityTransationsStream = nodesStream
+    .XmlNodeOfType<BdlSectransNode>($"{TaskName}: list only security transactions")
+    .SetForCorrelation($"{TaskName}: correlate security transactions");
+
+var fileCashMovStream = nodesStream
+    .XmlNodeOfType<BdlCashtrNode>($"{TaskName}: list only cash movements")
+    .SetForCorrelation($"{TaskName}: correlate cash movements");
+
+var fileXratesStream = nodesStream
+    .XmlNodeOfType<BdlXratesNode>($"{TaskName}: list only xrates nodes")
+    .SetForCorrelation($"{TaskName}: correlate Xrates nodes");
+
+var fileTableStream = nodesStream
+    .XmlNodeOfType<BdlTableNode>($"{TaskName}: list only table nodes");
+    //.SetForCorrelation($"{TaskName}: correlate table nodes");
+#endregion
+
+#region PORTFOLIOS / PERSONS-COMPANIES / INVESTOR RELATIONSHIPS
+var portfolioStream = filePortfoliosStream
+    .LookupCurrency($"{TaskName}: get related currency for portfolio", l => l.DefaultCcy, (l, r) => new { l.ContId, CurrencyId = r?.Id, fileRow=l })
+    .Select($"{TaskName}: create portfolio", i => new DiscretionaryPortfolio
+    {
+        InternalCode = getPortfolioInternalCode(i.ContId),
+        Name = $"{i.ContId}",
+        ShortName = $"{i.fileRow.CollectionId}",
+        CurrencyId = i.CurrencyId,
+        InceptionDate = i.fileRow.OpenDate,
+        PricingFrequency = FrequencyType.Daily,
+    })
+    .EfCoreSave($"{TaskName}: save portfolio", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+
+var personStream = filePortfoliosStream
+    .Where($"{TaskName}: filter individual client", i=>i.InitMifid.Contains("(01)"))
+    .LookupCountry($"{TaskName}: get related country for person", l => l.Domicile, (l, r) => new {fileRow = l, CountryId = r?.Id})
+    .LookupCurrency($"{TaskName}: get related currency for person", l => l.fileRow.DefaultCcy, (l, r) => 
+                new { fileRow = l.fileRow, CountryId=l.CountryId, CurrencyId = r?.Id})
+    .Select($"{TaskName}: create person entity", i => new Person
+    {
+        InternalCode = getPortfolioInternalCode(i.fileRow.ContId),
+        FirstName = "TBC",
+        LastName = $"{i.fileRow.ContId}",
+        CurrencyId = i.CurrencyId.HasValue? i.CurrencyId.Value:(int?)null,
+        CountryId = i.CountryId.HasValue? i.CountryId.Value:(int?)null,
+        Culture = new CultureInfo("en-GB"),
+    })
+    .EfCoreSave($"{TaskName}: save person", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+
+var individualInvestorRelationshipStream = personStream
+    .Select($"{TaskName} create individual Investor Relationship", i => 
+        new {EntityInternalCode=i.InternalCode, Relationship= new InvestorRelationship{
+        EntityId = i.Id,
+        InvestorType = InvestorType.Retail,
+        StatementFrequency = FrequencyType.Quarterly,
+        StartDate = DateTime.Today,
+        CurrencyId = i.CurrencyId.Value,
+    }})
+    .EfCoreSave($"{TaskName}: Save Individual Investor Relationship", o => o
+        .Entity(i=>i.Relationship).SeekOn(i => i.EntityId).DoNotUpdateIfExists().Output((i,e)=> i));
+        
+var companyStream = filePortfoliosStream
+    .Where($"{TaskName}: filter company client", i=> !i.InitMifid.Contains("(01)"))
+    .LookupCountry($"{TaskName}: get related country for companies", l => l.Domicile, (l, r) => new {fileRow = l, CountryId = r?.Id})
+    .LookupCurrency($"{TaskName}: get related currency for companies", l => l.fileRow.DefaultCcy, (l, r) => 
+                new { fileRow = l.fileRow, CountryId=l.CountryId, CurrencyId = r?.Id})
+    .Select($"{TaskName}: create client company entity", i => new Company
+    {
+        InternalCode = getPortfolioInternalCode(i.fileRow.ContId),
+        Name = $"{i.fileRow.ContId}",
+        CurrencyId = i.CurrencyId.HasValue? i.CurrencyId.Value:(int?)null,
+        CountryId = i.CountryId.HasValue? i.CountryId.Value:(int?)null,
+        Culture = new CultureInfo("en-GB"),
+        YearEnd = new DateOfYear(12,31)
+    }).EfCoreSave($"{TaskName}: save company", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+
+var companyInvestorRelationshipStream = companyStream
+    .CorrelateToSingle($"{TaskName}: get related company  file row", filePortfoliosStream, (l, r) => new { Company = l, FileRow=r})
+    .Select($"{TaskName} create company Investor Relationship", i =>
+     new {EntityInternalCode=i.Company.InternalCode, Relationship= new InvestorRelationship{
+        EntityId = i.Company.Id,
+        InvestorType = i.FileRow.InitMifid.Contains("(03)")? InvestorType.Institutional:InvestorType.Retail,
+        StatementFrequency = FrequencyType.Quarterly,
+        StartDate = i.FileRow.OpenDate,
+        CurrencyId = i.Company.CurrencyId.Value,
+    }})
+    .EfCoreSave($"{TaskName}: Save Company Investor Relationship", o => o
+        .Entity(i=>i.Relationship).SeekOn(i => i.EntityId).DoNotUpdateIfExists().Output((i,e)=> i));
+
+var investorsStream = individualInvestorRelationshipStream
+    .Union($"{TaskName}: merge of the investor relationship streams", companyInvestorRelationshipStream);
+
+var relationshipPortfoliosStream = investorsStream
+	.Lookup($"{TaskName}: Link Investor-Porfolio - get related portfolio",portfolioStream, 
+                i=>i.EntityInternalCode,i=>i.InternalCode, (l,r) => new {InvestorRelationship = l.Relationship, Portfolio = r})
+	.Where($"{TaskName}: Link Investor-Porfolio - Filter existing portfolio", i=>i.Portfolio !=null)
+    .Select($"{TaskName}: create link between investor and related portfolio", i => new RelationshipPortfolio {
+		RelationshipId = i.InvestorRelationship.Id, PortfolioId=i.Portfolio.Id})
+	.EfCoreSave($"{TaskName}: Save link Relationship-Portfolio", 
+        o => o.SeekOn(i => new {i.RelationshipId, PortfolioId=i.PortfolioId}).DoNotUpdateIfExists());
+#endregion
+
+#region INVESTOR CLASSIFICATIONS
+// 1. MIFIDCLASS Type definition
+var MIFIDCLASSType = ProcessContextStream
+    .Select($"{TaskName}: Create MIFIDCLASS classification type", ctx => new InvestorClassificationType 
+    { 
+        Code = "MIFIDCLASS", 
+        Name = new MultiCultureString { ["en"] = "Investor MiFID Classification" }
+    })
+    .EfCoreSave($"{TaskName}: Save MIFIDCLASS type", o => o.SeekOn(ct => ct.Code)
+    .DoNotUpdateIfExists())
+    .EnsureSingle($"{TaskName}: Ensure MIFIDCLASS is single");
+
+// 2. MIFIDCLASS: Investor Classification definition
+var MIFIDCLASSClassificationStream = filePortfoliosStream
+    .Distinct($"{TaskName}: Distinct MIFIDCLASS", i => i.InitMifid)
+    .Select($"{TaskName}: Create MIFIDCLASS classification", MIFIDCLASSType, (i, t) => new InvestorClassification
+    {
+        Code = i.InitMifid,
+        Name = new MultiCultureString { ["en"] = i.InitMifid },
+        ClassificationTypeId = t.Id
+    })
+    .EfCoreSave($"{TaskName}: Save MIFIDCLASS Classification", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
+    .DoNotUpdateIfExists());
+
+// 3. MIFIDCLASS: Investor classification assignations
+var MIFIDCLASSAssignations = filePortfoliosStream
+	.Lookup($"{TaskName}: Get related investor", investorsStream, 
+                i=> getPortfolioInternalCode(i.ContId),i=>i.EntityInternalCode,(l, r) => new{FileRow = l,InvestorRelationship=r})
+	.Lookup($"{TaskName}: Get related investor classification", MIFIDCLASSClassificationStream
+            , i=>i.FileRow.InitMifid, i=>i.Code, (l,r) => 
+            new { FileRow = l.FileRow, InvestorRelationship = l.InvestorRelationship, InvestorClassification = r})
+    .Select($"{TaskName}: Investor classification",i=> new ClassificationOfInvestorRelationship
+        { 
+            InvestorRelationshipId= (i.InvestorRelationship !=null)? i.InvestorRelationship.Relationship.Id
+                            : throw new Exception("InvestorRelationship is null: " + i.FileRow.ContId ),
+            ClassificationTypeId = i.InvestorClassification.ClassificationTypeId,
+            ClassificationId = i.InvestorClassification.Id
+        })
+    .EfCoreSave($"{TaskName}: Save Investor classification assignation", 
+                o => o.SeekOn(i => new { i.ClassificationTypeId, i.InvestorRelationshipId})
+    .DoNotUpdateIfExists());
+#endregion
+
+#region TARGET SECURITIES
+var targetSecurityInstrumentStream = fileTargetSecuritiesStream
+    .Distinct($"{TaskName}: distinct target positions security", i => i.Isin ?? i.SecurityCode)
+    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.InstrCcy, (l, r) => new {Node =l,l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CurrencyId = r?.Id })
+    .LookupCountry($"{TaskName}: get related country for target security", l => l.Domicile, (l, r) => new {Node =l.Node, l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.CurrencyId, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CountryId = r?.Id })
+    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.InstrType.Value, i.Isin, i.SecurityCode, i.SecName, 
+                                    i.Domicile, i.CurrencyId, i.ValFreq, i.CountryId, i.EurAmStyle, 
+                                    i.UnderlAsset, i.StrikePrice, i.ContrSize,
+                                    i.Node.FaceAmt,i.Node.IntrRate,i.Node.NextCoupDate,i.Node.MatRdmptDate))
+    .WhereCorrelated($"{TaskName}: keep known security instrument types", i => i != null)
+    .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 #endregion
 
-var portfolioStream = filePortfoliosStream
-    .LookupCurrency($"{TaskName}: get related currency for portfolio", l => l.DefaultCcy, (l, r) => new { l.ContId, CurrencyId = r?.Id })
-    .Select($"{TaskName}: create portfolio", i => new DiscretionaryPortfolio
-    {
-        InternalCode = i.ContId,
-        Name = $"BDL_{i.ContId}",
-        ShortName = $"BDL_{i.ContId}".Truncate(MaxLengths.ShortName),
-        CurrencyId = i.CurrencyId,
-        // CountryCode = i.Domicile
+#region TARGET SECURITY CLASSIFICATIONS
+var classificationTypesStream = ProcessContextStream.CrossApplyEnumerable($"{TaskName}: Create BDL Classifications Types",ctx=>
+    new [] {
+        new { Code = "InstrType-BDL", Name = "Instrument Type - BDL", TableCode="SECTYP" },
+        new { Code = "InstrTypeL1-BDL", Name = "Instrument Type Level 1 - BDL", TableCode="SECTYP"},
+        new { Code = "InstrTypeL2-BDL", Name = "Instrument Type Level 2 - BDL", TableCode="SECTYP"},
+        new { Code = "MifidPTyp-BDL", Name = "MifidPTyp - BDL", TableCode=""},
+        new { Code = "MifidRisk-BDL", Name = "MifidRisk - BDL", TableCode=""},
+        new { Code = "Mifid2Complx-BDL", Name = "Mifid2Complx - BDL", TableCode=""},
+        new { Code = "CaaClassif", Name = "Caa Classification", TableCode="CAACLASS"},
+        new { Code = "EconSector-BDL", Name = "Economic Sector - BDL", TableCode="ECOSEC"},
+        new { Code = "GeoSector-BDL", Name = "Geographic Sector - BDL", TableCode="GEOSEC"},
+        new { Code = "WthldTax", Name = "withholding tax class", TableCode="WITHHTAX"},
+        new { Code = "TradingPlace", Name = "Market Place - BDL", TableCode="MKTPLACE"},
+        new { Code = "EusdStatA", Name = "EUSD relevant - BDL", TableCode="EUSD"},
     })
-    .EfCoreSave($"{TaskName}: save portfolio", o => o.SeekOn(i => i.InternalCode));
+    .Select($"{TaskName}: Create BDL Classifications Type Instances",i => new{
+                TableCode=i.TableCode, 
+                ClassificationType= new SecurityClassificationType { Code = i.Code, Name = new MultiCultureString { ["en"] = i.Name }}})
+    .EfCoreSave($"{TaskName}: Save Classification Types", o => o
+        .Entity(i=>i.ClassificationType)
+        .SeekOn(ct => ct.Code).DoNotUpdateIfExists().Output((i,e)=> i));
 
+var classificationStream = fileTargetSecuritiesStream
+    .CrossApplyEnumerable($"{TaskName}: Cross apply BDL Classifications", i => 
+        new [] {
+            new{ TypeCode = "InstrType-BDL", ClassificationCode= i.InstrType.ToString()},
+            new{ TypeCode = "InstrTypeL1-BDL", ClassificationCode= i.InstrTypeL1.ToString()},
+            new{ TypeCode = "InstrTypeL2-BDL", ClassificationCode= i.InstrTypeL2.ToString()},
+            new{ TypeCode = "MifidPTyp-BDL", ClassificationCode= i.MifidPTyp},
+            new{ TypeCode = "MifidRisk-BDL", ClassificationCode= i.MifidRisk},
+            new{ TypeCode = "Mifid2Complx-BDL", ClassificationCode= i.Mifid2Complx},
+            new{ TypeCode = "CaaClassif", ClassificationCode= i.CaaClassif},
+            new{ TypeCode = "EconSector-BDL", ClassificationCode= i.EconSector},
+            new{ TypeCode = "GeoSector-BDL", ClassificationCode= i.GeoSector},
+            new{ TypeCode = "WthldTax", ClassificationCode= i.WthldTax},
+            new{ TypeCode = "TradingPlace", ClassificationCode= i.TradingPlace},
+            new{ TypeCode = "EusdStatA", ClassificationCode  = i.EusdStatA},
+    })
+    .Where($"{TaskName}: Filter Classification null values", i => !string.IsNullOrEmpty(i.ClassificationCode))
+    .Distinct($"{TaskName}: Distinct BDL Classifications", i => new { i.TypeCode, i.ClassificationCode})
+    .Lookup($"{TaskName}: Get related classifications Type",classificationTypesStream,i=>i.TypeCode,i=>i.ClassificationType.Code,
+            (l,r)=> new { ClassificationCode=l.ClassificationCode, Type= r} )
+    .Lookup($"{TaskName}: Lookup related description in BDL dictionary", fileTableStream, 
+            i=> new{ TableCode= i.Type.TableCode, KeyVal = i.ClassificationCode},i=>new{ TableCode=i.TableCode, KeyVal = i.KeyVal }, (l,r)=> 
+            new {
+                ClassificationCode=l.ClassificationCode, 
+                Type= l.Type.ClassificationType,
+                KeyVal = r
+    })
+    .Select($"{TaskName}: Create BDL Classifications", i=> new SecurityClassification
+    {
+        ClassificationTypeId = i.Type.Id,
+        Code = i.ClassificationCode,
+        Name = new MultiCultureString { ["en"] = (i.KeyVal !=null)? i.KeyVal.Descr : i.ClassificationCode }
+    })
+    .EfCoreSave($"{TaskName}: Save BDL classifications", o => o.SeekOn(i => new { i.Code })
+    .DoNotUpdateIfExists());
+
+var classificationAssignations = fileTargetSecuritiesStream
+    .Lookup($"{TaskName}: Classification assign - Get related security", targetSecurityInstrumentStream, 
+                i=>(!string.IsNullOrEmpty(i.Isin))?i.Isin:i.SecurityCode,i => i.InternalCode,
+                (l, r) => new{FileRow = l,Security=r})
+    .Where($"{TaskName}: Filter Non Cash",i=> i.Security!=null && !(i.Security is Cash))
+    .CrossApplyEnumerable($"{TaskName}: Cross apply Security Classifications 2", i => 
+        new [] {
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.InstrType.ToString()},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.InstrTypeL1.ToString()},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.InstrTypeL2.ToString()},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.MifidPTyp},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.MifidRisk},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.Mifid2Complx},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.CaaClassif},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.EconSector},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.GeoSector},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.WthldTax},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.TradingPlace},
+            new{ Security = i.Security, FileRow = i.FileRow, Classification = i.FileRow.EusdStatA},
+    })
+    .Where($"{TaskName}: Assignation - Filter Classification null values", i => !string.IsNullOrEmpty(i.Classification))
+    .Lookup($"{TaskName}: Get related classification", classificationStream, i=>i.Classification, i=>i.Code,
+            (l,r)=> new { Security = l.Security, FileRow = l.FileRow, Classification = r})
+    .Select($"{TaskName}: Assign classification",i=> new ClassificationOfSecurity 
+        { 
+            SecurityId = (i.Security!=null)? i.Security.Id
+                            : throw new Exception("Security is null: " + i.FileRow.SecurityCode), 
+            ClassificationTypeId = (i.Classification!=null)? i.Classification.ClassificationTypeId 
+                            : throw new Exception("Classification not found for security: " + i.Security.InternalCode), 
+            ClassificationId = i.Classification.Id 
+        })
+    .EfCoreSave($"{TaskName}: Save classification assignation", o => o.SeekOn(i => new { i.SecurityId, i.ClassificationTypeId })
+    .DoNotUpdateIfExists());
+
+#endregion
+
+#region PORTFOLIO COMPOSITIONS
 var allPositions = fileSecurityPositionsStream.Union($"{TaskName}: merge all cash and security positions", fileCashPositionsStream,
-        (l, r) => new { Date = l.AssBalDate, SecurityInternalCode = l.ContId, SecurityPosition = l, CashPosition = r },
-        (l, r) => new { Date = r.PosBalDate, SecurityInternalCode = r.ContId, SecurityPosition = l, CashPosition = r })
+        (l, r) => new { Date = l.AssBalDate, ContId = l.ContId, SecurityPosition = l, CashPosition = r },
+        (l, r) => new { Date = r.PosBalDate, ContId = r.ContId, SecurityPosition = l, CashPosition = r })
     .Lookup($"{TaskName}: get related portfolio", portfolioStream,
-        i => i.SecurityInternalCode,
+        i => getPortfolioInternalCode(i.ContId),
         i => i.InternalCode,
         (l, r) => new { l.Date, l.CashPosition, l.SecurityPosition, Portfolio = r });
 
@@ -178,9 +692,9 @@ var portfolioCompositionStream = allPositions
             input.Portfolio,
             PortfolioComposition = savedEntity
         }));
+#endregion
 
-#region Cash
-
+#region CASH SECURITIES
 var targetCashStream = fileCashPositionsStream
     .Distinct($"{TaskName}: distinct target cash", i => i.Iban)
     .LookupCurrency($"{TaskName}: get related currency for target cash", l => l.AssetCcy, (l, r) => new { l.Iban, CurrencyId = r?.Id })
@@ -189,87 +703,232 @@ var targetCashStream = fileCashPositionsStream
         InternalCode = i.Iban,
         Iban = i.Iban,
         CurrencyId = i.CurrencyId,
-        Name = $"BDL_{i.Iban}",
+        Name = $"{i.Iban}",
+        AccountType = getCashAccountType(i.AssetType),
         ShortName = $"BDL_{i.Iban}".Truncate(MaxLengths.ShortName),
     })
     .EfCoreSave($"{TaskName}: save target cash", o => o.SeekOn(i => i.Iban).DoNotUpdateIfExists());
+#endregion
 
+#region CASH POSITIONS
 var cashPositionToSaveStream = fileCashPositionsStream
     .Lookup($"{TaskName}: lookup target cash", targetCashStream, i => i.Iban, i => i.Iban, (l, r) => new { FromFile = l, Cash = r })
-    .Lookup($"{TaskName}: lookup cash portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Cash, Portfolio = r })
-    .CorrelateToSingle($"{TaskName}: lookup cash portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Cash, l.Portfolio, r.PortfolioComposition })
+    .CorrelateToSingle($"{TaskName}: lookup cash portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Cash, r.PortfolioComposition })
     .Select($"{TaskName}: create cash pos", i => new Position
     {
         PortfolioCompositionId = i.PortfolioComposition.Id,
         SecurityId = i.Cash.Id,
-        Value = 1,
-        MarketValueInPortfolioCcy = i.FromFile.PosBalRefCcy + i.FromFile.AccrInt
+        Value = 1, //It's quantity (1 for cash position)
+        MarketValueInSecurityCcy = i.FromFile.balVal,
+        MarketValueInPortfolioCcy = i.FromFile.PosBalRefCcy,
+        AccruedInterestInPortfolioCcy = i.FromFile.AccrInt.HasValue? i.FromFile.AccrInt.Value:(double?) null,
+        //AccruedInterestInSecurityCcy=
+        BookCostInSecurityCcy = i.FromFile.balBook,
+        //BookCostInPortfolioCcy = 
     });
-
 #endregion
 
-#region Security
-
-var targetSecurityInstrumentStream = fileTargetSecuritiesStream
-    .Distinct($"{TaskName}: distinct target positions security", i => i.Isin ?? i.SecurityCode)
-    .LookupCurrency($"{TaskName}: get related currency for target security", l => l.InstrCcy, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CurrencyId = r?.Id })
-    .LookupCountry($"{TaskName}: get related country for target security", l => l.Domicile, (l, r) => new { l.InstrType, l.Isin, l.SecurityCode, l.SecName, l.Domicile, l.ValFreq, l.CurrencyId, l.EurAmStyle, l.UnderlAsset, l.StrikePrice, l.ContrSize, CountryId = r?.Id })
-    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.InstrType, i.Isin, i.SecurityCode, i.SecName, i.Domicile, i.CurrencyId, i.ValFreq, i.CountryId, i.EurAmStyle, i.UnderlAsset, i.StrikePrice, i.ContrSize) as SecurityInstrument)
-    .WhereCorrelated($"{TaskName}: keep known security instrument types", i => i != null)
-    .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.Isin).AlternativelySeekOn(i => i.InternalCode).DoNotUpdateIfExists());
-
+#region SECURITY POSITIONS
 var instrumentPositionsToSaveStream = fileSecurityPositionsStream
-    .Lookup($"{TaskName}: lookup related target security", targetSecurityInstrumentStream, i => i.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l, Security = r })
-    .Lookup($"{TaskName}: lookup security portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Security, Portfolio = r })
-    .CorrelateToSingle($"{TaskName}: lookup security portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Security, l.Portfolio, r.PortfolioComposition })
+    .Lookup($"{TaskName}: lookup related target security by Isin", targetSecurityInstrumentStream, 
+            i => (!string.IsNullOrEmpty(i.Isin))?i.Isin:i.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l, Security1 = r })
+    .Lookup($"{TaskName}: lookup related target security by Security Code", targetSecurityInstrumentStream, 
+             i => i.FromFile.SecurityCode, i => i.InternalCode, (l, r) => new { FromFile = l.FromFile, Security1 = l.Security1, Security2 = r })
+    .Lookup($"{TaskName}: lookup security portfolio", portfolioStream, i => i.FromFile.ContId, i => i.InternalCode, (l, r) => new { l.FromFile, l.Security1, l.Security2, Portfolio = r })
+    .CorrelateToSingle($"{TaskName}: lookup security portfolio composition", portfolioCompositionStream, (l, r) => new { l.FromFile, l.Security1, l.Security2, l.Portfolio, r.PortfolioComposition })
     .Select($"{TaskName}: create security pos", i => new Position
     {
         PortfolioCompositionId = i.PortfolioComposition.Id,
-        SecurityId = i.Security.Id,
+        SecurityId = (i.Security1!=null)? i.Security1.Id: ((i.Security2!=null)?i.Security2.Id:throw new Exception($"Security not found {i.FromFile.SecurityCode}")),
         Value = i.FromFile.AssetQty,
         MarketValueInSecurityCcy = i.FromFile.TotSec,
-        MarketValueInPortfolioCcy = i.FromFile.TotRefCcy
+        MarketValueInPortfolioCcy = i.FromFile.TotRefCcy,
+        ValuationPrice = i.FromFile.UnitPrice,
+        //AccruedInterestInSecurityCcy =
+        AccruedInterestInPortfolioCcy = i.FromFile.AccrIntRef,
+        CostPrice = i.FromFile.CostPrice,
+        //BookCostInSecurityCcy =
+        //BookCostInPortfolioCcy = 
+        ProfitLossOnMarketPortfolioCcy = i.FromFile.UnReEur,
+        // ProfitLossOnFxPortfolioCcy
     });
-#endregion
+
 var savedPositions = cashPositionToSaveStream
     .Union($"{TaskName}: join to instrument positions", instrumentPositionsToSaveStream)
     .ComputeWeight(TaskName)
     .EfCoreSave($"{TaskName}: save position", o => o.SeekOn(i => new { i.SecurityId, i.PortfolioCompositionId }));
-return FileStream.WaitWhenDone($"{TaskName}: wait end of all save", savedPositions);
+#endregion
 
-Security CreateTargetSecurity(int instrType, string isin, string securityCode, string name, string domicile, int? currencyId, string valFreq, int? countryId, string eurAmStyle, string underlAsset, double? strikePrice, double? contractSize)
+#region SECURITY TRANSACTIONS
+var savedTransactionsStream = fileSecurityTransationsStream
+    .Lookup($"{TaskName}: lookup transaction portfolio stream ", portfolioStream, i => i.ContId+"-BDL", i => i.InternalCode, (l, r) => new { FileRow = l, Portfolio = r })
+    .Lookup($"{TaskName}: lookup related target security by Isin in transaction", targetSecurityInstrumentStream, 
+            i => (!string.IsNullOrEmpty(i.FileRow.Isin))?i.FileRow.Isin:i.FileRow.SecurityCode, 
+            i => i.InternalCode, (l, r) => new { FileRow = l.FileRow, Portfolio = l.Portfolio, Security1 = r })
+    .Lookup($"{TaskName}: lookup related target security by Security Code in transaction", targetSecurityInstrumentStream, 
+           i => i.FileRow.SecurityCode, i => i.InternalCode, (l, r) => 
+           new { FileRow = l.FileRow, Portfolio = l.Portfolio, Security1 = l.Security1, Security2 = r })
+    .Select($"{TaskName}: Create new security transaction", i => new SecurityTransaction
+    {
+        PortfolioId = i.Portfolio!=null? i.Portfolio.Id : throw new Exception("Saving Security Transaction - portfolio not found: "+i.FileRow.ContId+"-BDL"),
+        SecurityId = (i.Security1!=null)? i.Security1.Id: ((i.Security2!=null)?
+                        i.Security2.Id:throw new Exception($"Security not found {i.FileRow.SecurityCode}")),
+        OperationType = i.FileRow.GrossAmount.Value <=0? OperationType.Buy: OperationType.Sale,
+        TransactionCode = getTransactionCode(i.FileRow.ContId, i.FileRow.OrderNr),
+        Description = i.FileRow.Communication1,
+        TradeDate = i.FileRow.OrderDate,
+        NavDate = i.FileRow.ExecDate,
+        ValueDate = i.FileRow.ValDate,
+        Quantity = Math.Abs(i.FileRow.SecQty),
+        GrossAmountInSecurityCcy = Math.Abs(i.FileRow.GrossAmount.Value),
+        GrossAmountInPortfolioCcy = (Math.Abs(i.FileRow.GrossAmount.Value) / (i.FileRow.Xrate.HasValue?i.FileRow.Xrate.Value:1.0)),
+        NetAmountInPortfolioCcy = Math.Abs(i.FileRow.NetAmount.Value),
+        NetAmountInSecurityCcy = (Math.Abs(i.FileRow.NetAmount.Value) * (i.FileRow.Xrate.HasValue?i.FileRow.Xrate.Value:1.0)),
+        FeesInSecurityCcy = i.FileRow.BankFee.HasValue?i.FileRow.BankFee.Value:(double?)null,
+        PriceInSecurityCcy = i.FileRow.ExecPrice,        
+        TransactionType = TransactionType.SecurityMovement,
+        DecisionType = TransactionDecisionType.Discretionary,
+        //int? CashMovementId = string Iban {get;set;}// <Iban>LU870080399837602001</Iban> TODO: link with cash movement
+    }).EfCoreSave($"{TaskName}: Save security transaction", o => o.SeekOn(i => i.TransactionCode).DoNotUpdateIfExists());
+#endregion
+
+#region CASH MOVEMENTS
+var savedMovementStream = fileCashMovStream
+    .LookupCurrency($"{TaskName}: Get cash movement related currency", l => l.BookCcy, (l, r) => new { FileRow = l, Currency = r })
+    .Lookup($"{TaskName}: lookup mov portfolio stream ", portfolioStream, 
+        i => getPortfolioInternalCode(i.FileRow.ContId), i => i.InternalCode, 
+        (l, r) =>  new { FileRow = l.FileRow,Currency = l.Currency, Portfolio = r })
+    .Lookup($"{TaskName}: lookup mov related cash ", targetCashStream, i => i.FileRow.Iban, i => i.Iban, (l, r) => new { FileRow=l.FileRow,Currency = l.Currency, Portfolio = l.Portfolio, Cash = r})    
+    //.EfCoreLookup($"{TaskName}: get cash security by IBAN", o => o.Set<Cash>().On(i => i.FileRow.Iban, i => i.Iban).Select((l, r) => new { FileRow=l.FileRow,Currency = l.Currency, Portfolio = l.Portfolio, Cash = r }).CacheFullDataset())    
+    .Lookup($"{TaskName}: lookup related security transaction by OrderNr", savedTransactionsStream, 
+            i => i.FileRow.ContId +"-" + i.FileRow.OrderNr, i => i.TransactionCode
+            , (l, r) => new { FileRow=l.FileRow,Currency = l.Currency, Portfolio = l.Portfolio, Cash = l.Cash, SecTrans= r })
+    .Select($"{TaskName}: Create new movement", i => new CashMovement
+    {
+        PortfolioId = i.Portfolio.Id,
+        CurrencyId = i.Currency.Id,
+        TransactionCode = getTransactionCode(i.FileRow.ContId, i.FileRow.OrderNr),
+        MovementCode = getMovementCode(i.FileRow.ContId, i.FileRow.OrderNr, i.FileRow.OrdTypId, i.FileRow.NetAmount, i.FileRow.bookDate),
+        TradeDate = i.FileRow.bookDate,
+        ValueDate = i.FileRow.ValDate,
+        ClosingDate = i.FileRow.ValDate,
+        ExternalTransactionCode = i.FileRow.ExternalRef,
+        CashId = (i.Cash !=null)? i.Cash.Id :(int?)null,
+        TransactionId = (i.SecTrans != null)? i.SecTrans.Id:(int?)null,
+        UnderlyingSecurityId = (i.SecTrans != null)? i.SecTrans.SecurityId:(int?)null,
+
+        Description = i.FileRow.BookText + 
+                    ((!string.IsNullOrEmpty(i.FileRow.Communication1))? " - " + i.FileRow.Communication1:"") +
+                    ((!string.IsNullOrEmpty(i.FileRow.Communication2))? " - " + i.FileRow.Communication2:"") +
+                    ((!string.IsNullOrEmpty(i.FileRow.Communication3))? " - " + i.FileRow.Communication3:"") +
+                    ((!string.IsNullOrEmpty(i.FileRow.Communication4))? " - " + i.FileRow.Communication4:""),
+
+
+        TransactionType = i.FileRow.BookText.ToLower().Contains("dividend")? TransactionType.Dividend
+                        : i.FileRow.BookText.ToLower().Contains("coupon")? TransactionType.Coupon
+                        : (i.FileRow.BookText.ToLower().Contains("subscription")||i.FileRow.BookText.ToLower().Contains("redemption"))?TransactionType.SubscriptionRedemption
+                        : (i.FileRow.BookText.ToLower().Contains("buy")||i.FileRow.BookText.ToLower().Contains("sell"))?TransactionType.SecurityMovement
+                        : (i.FileRow.BookText.ToLower().Contains("fee")||i.FileRow.BookText.ToLower().Contains("droit"))?TransactionType.ManagementFees
+                        : (i.FileRow.BookText.ToLower().Contains("interest")||i.FileRow.BookText.ToLower().Contains("intérêt"))?TransactionType.Interest
+                        : TransactionType.Cash,
+
+        GrossAmountInSecurityCcy = i.FileRow.GrossAmt.HasValue? i.FileRow.GrossAmt.Value:(double?)null,
+        GrossAmountInPortfolioCcy = i.FileRow.GrossAmt.HasValue? (i.FileRow.GrossAmt.Value / (i.FileRow.Xrate.HasValue?i.FileRow.Xrate.Value:1.0)):(double?)null,
+        NetAmountInPortfolioCcy = i.FileRow.NetAmount.HasValue? i.FileRow.NetAmount.Value : (double?)null,
+        NetAmountInSecurityCcy = i.FileRow.NetAmount.HasValue? (i.FileRow.NetAmount.Value * (i.FileRow.Xrate.HasValue?i.FileRow.Xrate.Value:1.0)): (double?)null,
+        Reversal = i.FileRow.ReverseInd=="Y"? true : false,
+        FeesInSecurityCcy =  (i.FileRow.GrossAmt.HasValue && i.FileRow.NetAmount.HasValue)? 
+                            i.FileRow.GrossAmt.Value-(i.FileRow.NetAmount.Value * (i.FileRow.Xrate.HasValue?i.FileRow.Xrate.Value:1.0)): (double?)null,
+        BrokerageFeesInSecurityCcy = i.FileRow.FeeComm,
+    }).EfCoreSave($"{TaskName}: Save cash movement", o => o.SeekOn(i => new{i.TransactionCode,i.MovementCode}).DoNotUpdateIfExists());
+#endregion
+
+#region CASH MOVEMENT CLASSIFICATIONS
+// 1. ORDTYP Type definition
+var orderTypType = ProcessContextStream
+    .Select($"{TaskName}: Create ORDERTYP movement classification type", ctx => new MovementClassificationType 
+    { 
+        Code = "orderTyp", 
+        Name = new MultiCultureString { ["en"] = "Order type" }
+    })
+    .EfCoreSave($"{TaskName}: Save ORDERTYP type", o => o.SeekOn(ct => ct.Code)
+    .DoNotUpdateIfExists())
+    .EnsureSingle($"{TaskName}: Ensure ORDERTYP is single");
+
+// 2. ORDTYP: Movement Classification definition
+var ordTypFileTableStream = fileTableStream.Where($"{TaskName} Filter FileTableStream for ORDTYP",i=>i.TableCode=="ORDTYP");
+var orderTypClassificationStream = fileCashMovStream
+    .Distinct($"{TaskName}: Distinct ORDTYP", i => i.OrdTypId)
+	.Lookup($"{TaskName}: Lookup ORDTYP related description in BDL dictionary", ordTypFileTableStream, 
+            i=> new{ KeyVal = i.OrdTypId},i=>new{KeyVal = i.KeyVal }, (l,r)=> new { FileRow=l, TableNode = r})
+    .Select($"{TaskName}: Create ORDTYP movement classification", orderTypType, (i, t) => new MovementClassification
+    {
+        Code = i.FileRow.OrdTypId,
+        Name = new MultiCultureString { ["en"] = (i.TableNode !=null)? i.TableNode.Descr : i.FileRow.OrdTypId},
+        ClassificationTypeId = t.Id
+    })
+    .EfCoreSave($"{TaskName}: Save ORDTYP Classification", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
+    .DoNotUpdateIfExists());
+
+// 3. ORDTYP: Movement classification assignations
+var orderTypAssignations = fileCashMovStream
+	.Lookup($"{TaskName}: Mov classification assign - Get related movement", savedMovementStream, 
+                i=> getMovementCode(i.ContId, i.OrderNr, i.OrdTypId, i.NetAmount, i.bookDate),
+                i=>i.MovementCode,(l, r) => new{FileRow = l,Movement=r})
+	.Lookup($"{TaskName}: Mov classification assign - Get related classification", orderTypClassificationStream
+            , i=>i.FileRow.OrdTypId, i=>i.Code, (l,r)=> new { FileRow = l.FileRow, Movement = l.Movement, MovClassification = r})
+        .Select($"{TaskName}: Movement Assign classification",i=> new ClassificationOfCashMovement
+        {  
+            CashMovementId= (i.Movement!=null)? i.Movement.Id
+                    : throw new Exception("Movement is null: "+getMovementCode(i.FileRow.ContId, i.FileRow.OrderNr, i.FileRow.OrdTypId, i.FileRow.NetAmount, i.FileRow.bookDate)), 
+            ClassificationTypeId = i.MovClassification.ClassificationTypeId,
+            ClassificationId = i.MovClassification.Id 
+        })
+    .EfCoreSave($"{TaskName}: Save Movement classification assignation", o => o.SeekOn(i => new { i.ClassificationTypeId, i.CashMovementId })
+    .DoNotUpdateIfExists());
+
+#endregion
+
+// return FileStream.WaitWhenDone($"{TaskName}: wait end of all save", savedPositions);
+
+Security CreateTargetSecurity(int instrType, string isin, string securityCode, string name, 
+                string domicile, int? currencyId, string valFreq, int? countryId, string eurAmStyle, 
+                string underlAsset, double? strikePrice, double? contractSize,
+                double? faceValue,double? rate, DateTime? nextCouponDate,DateTime? maturityDate)
 {
     Security security = null;
     switch (instrType)
     {
-        case 310:
-            security = new Option();
-            break;
-        case 805:
-        case 810:
-        case 820:
-        case 830:
-        case 840:
-        case 850:
-        case 855:
-        case 870:
-        case 880:
-        case 890:
-        case 896:
-            security = new ShareClass();
+        case 101:
+        case 104:
+            security = new Bond();
             break;
         case 201:
         case 202:
-        case 910:
-        case 911:
-        case 993:
             security = new Equity();
             break;
+        case int n when (n >= 310 && n <= 320):
+            security = new Option();
+            break;
+        case int n when (n >= 800 && n < 890):
+            security = new ShareClass();
+            break;
+        case 890:
+            security = new Etf();
+            break;
+        case 895:
+            security = new ShareClass();
+            break;
+        case int n when (n >= 900 && n < 1000):
+            security = new Cash(){Rate = 0, AccountType = AccountType.MarginAccount};
+            break;
         default:
-            throw new Exception($"{instrType}: unknown instrument type. (isin: {isin}, name: {name})");
+            throw new Exception($"Unknown instrument type {instrType} not managed: (isin: {isin}, name: {name})");
     }
 
     if (security == null) return null;
+    security.CurrencyId = currencyId;
+    security.InternalCode = securityCode; 
     security.Name = name;
     security.ShortName = name.Truncate(MaxLengths.ShortName);
     if (security is OptionFuture der)
@@ -278,11 +937,33 @@ Security CreateTargetSecurity(int instrType, string isin, string securityCode, s
     }
     if (security is SecurityInstrument securityInstrument)
     {
+        securityInstrument.InternalCode = !string.IsNullOrEmpty(isin)?isin:securityCode;
         securityInstrument.Isin = isin;
     }
     if (security is RegularSecurity regularSecurity)
     {
         regularSecurity.CountryId = countryId;
+    }
+    if (security is Bond bond)
+    {
+        if (rate.HasValue)
+            bond.CouponRate = rate.Value/100;
+        if (faceValue.HasValue)
+            bond.FaceValue = faceValue.Value;
+        if (nextCouponDate.HasValue)
+            bond.NextCouponDate = nextCouponDate.Value;
+        if (maturityDate.HasValue)
+            bond.MaturityDate = maturityDate.Value;
+            
+        // CouponType CouponType= ... ;
+        // bool IsPerpetual= ... ;
+        // DateTime? FirstPaymentDate= ... ;
+        // DateTime? PreviousCouponDate= ... ;
+        // FrequencyType? CouponFrequency= ... ;
+        // BondIssuerType? IssuerType = ... ;
+        // double? IssueAmount= ... ;
+        // bool IsCallable= ... ;
+        // DateTime? NextCallDate= ... ;
     }
     if (security is Option option)
     {
@@ -294,7 +975,41 @@ Security CreateTargetSecurity(int instrType, string isin, string securityCode, s
         standardDerivative.StrikePrice = strikePrice;
         standardDerivative.ContractSize = contractSize;
     }
-    security.CurrencyId = currencyId;
-    security.InternalCode = securityCode;
     return security;
+}
+
+string getPortfolioInternalCode(string ContId)
+    => ContId + "-BDL";
+
+string getMovementCode(string ContId, string OrderNr, string OrdTypId, double? NetAmount, DateTime bookDate)
+    => ContId + "-" + OrderNr+ "-"
+        + (string.IsNullOrEmpty(OrdTypId)? "" : OrdTypId+ "-")
+        + ( NetAmount.HasValue? NetAmount+ "-" : "" )
+        + bookDate.ToString("yyyy-MM-dd") 
+        + "-BDL";
+
+string getTransactionCode(string ContId, string OrderNr)
+    => ContId + "-" + OrderNr   + "-BDL";
+
+AccountType? getCashAccountType(int cashType)
+{
+     switch (cashType)
+    {
+        case 9100:
+           return AccountType.CurrentAccount;
+        case 17027:
+            return AccountType.DepositAccount;
+        case 17063:
+            return AccountType.GuaranteeDeposit;
+        case 17027:
+            return AccountType.MarginAccount;
+        case 5674:
+            return AccountType.CashClaimAccount;
+        case 17706:
+            return AccountType.FundAccounting;
+        case 9120:
+            return AccountType.PreciousMetals;
+        default:
+            throw new Exception($"Unknown cashType code: {cashType}");
+    }
 }
