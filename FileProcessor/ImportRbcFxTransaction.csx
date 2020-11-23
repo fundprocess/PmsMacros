@@ -30,14 +30,15 @@ var brokerStream = transFileStream
     .EfCoreSave($"{TaskName}: Insert brokers", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 var euroCurrency = ProcessContextStream
-    .EfCoreSelect($"{TaskName}: get euroCurrency", i => i.Set<Currency>().Where(c => c.IsoCode == "EUR"))
+    .EfCoreSelect($"{TaskName}: get euroCurrency", (ctx, j) => ctx.Set<Currency>().Where(c => c.IsoCode == "EUR"))
     .EnsureSingle($"{TaskName}: ensures only one euro currency");
 
 var counterpartyRelationshipStream = brokerStream
     .Select($"{TaskName}: link currency to relationship", euroCurrency, (l, r) => new { BrokerId = l.Id, CurrencyId = r.Id })
     .EfCoreLookup($"{TaskName}: get related relationship in db", o => o
-        .Set<CounterpartyRelationship>()
-        .Where(i => (i.StartDate <= DateTime.Now || i.StartDate == null) && (i.EndDate == null || i.EndDate > DateTime.Now))
+        .Query(ctx => ctx
+            .Set<CounterpartyRelationship>()
+            .Where(i => (i.StartDate <= DateTime.Now || i.StartDate == null) && (i.EndDate == null || i.EndDate > DateTime.Now)))
         .On(i => i.BrokerId, i => i.EntityId)
         .Select((l, r) => r ?? new CounterpartyRelationship
         {

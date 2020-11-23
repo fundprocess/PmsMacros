@@ -15,7 +15,7 @@ var navFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse nav file", efaNavFileDefinition)
     .SetForCorrelation($"{TaskName}: prepare correlation");
 
-var managedSubFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get subfunds from db", i => i.Set<SubFund>());
+var managedSubFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get subfunds from db", (ctx, j) => ctx.Set<SubFund>());
 
 var managedShareClassStream = navFileStream
     .Distinct($"{TaskName}: distinct share classes", i => new { i.SubFundCode, i.ShareCode }, true)

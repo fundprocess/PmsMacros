@@ -1,17 +1,17 @@
 // //ADD A BLOOMBERG CODE
-var shareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: shareClassStream", i => i.Set<ShareClass>().Where(sc=>sc.InternalCode == "7754T1"));
+var shareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: shareClassStream", (ctx, j) => ctx.Set<ShareClass>().Where(sc => sc.InternalCode == "7754T1"));
 var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i => new SecurityDataProviderCode
-    {
-        Code = "UIUIVEU.LX",
-        DataProvider = "Bloomberg",
-        SecurityId = i.Id,
-    })
+{
+    Code = "UIUIVEU.LX",
+    DataProvider = "Bloomberg",
+    SecurityId = i.Id,
+})
     .EfCoreSave($"{TaskName}: saveBbgCodeSave", o => o.SeekOn(i => new { i.Code, i.SecurityId, i.DataProvider }));
 
 
 
 //ADD NAV MANUALLY
-// var shareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: shareClassStream", i => i.Set<ShareClass>().Where(sc=>sc.InternalCode == "7754T1"));
+// var shareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: shareClassStream", (ctx,j) => ctx.Set<ShareClass>().Where(sc=>sc.InternalCode == "7754T1"));
 // var saveNav = shareClassStream.Select($"{TaskName}: shareClassStreamSelect", i => new SecurityHistoricalValue
 //     {
 //         SecurityId = i.Id,
@@ -23,9 +23,9 @@ var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i =>
 
 
 //SET FUND DATA
-// var primaryShareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get shareclasses from db", i => i.Set<ShareClass>()
+// var primaryShareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get shareclasses from db", (ctx, j) => ctx.Set<ShareClass>()
 //                                 .Where(i=>i.InternalCode == "7754T1")).EnsureSingle($"{TaskName}: ensure one sc");
-// var subFundStream = ProcessContextStream.EfCoreSelect("getsubFundStream", i => i.Set<SubFund>().Where(p => p.InternalCode == "7754"))
+// var subFundStream = ProcessContextStream.EfCoreSelect("getsubFundStream", (ctx,j) => ctx.Set<SubFund>().Where(p => p.InternalCode == "7754"))
 // 					.Select($"{TaskName}: link sc", primaryShareClassStream,(sf,sc)=>{
 // 						sf.PrimaryShareClassId=sc.Id;
 // 						sf.Url = "www.valuanalysis.com/the-fund/";
@@ -39,8 +39,8 @@ var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i =>
 
 
 //SET BENCHMARK
-// var benchmarkStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get benchmark from db", i => i.Set<Benchmark>().Where(i=>i.InternalCode == "MXWO")).EnsureSingle($"{TaskName}: ensure one bench");
-// var subFundStreamBench = ProcessContextStream.EfCoreSelect("getsubFundStreamBench", i => i.Set<SubFund>().Where(p => p.InternalCode == "7754"))
+// var benchmarkStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get benchmark from db", (ctx,j) => ctx.Set<Benchmark>().Where(i=>i.InternalCode == "MXWO")).EnsureSingle($"{TaskName}: ensure one bench");
+// var subFundStreamBench = ProcessContextStream.EfCoreSelect("getsubFundStreamBench", (ctx,j) => ctx.Set<SubFund>().Where(p => p.InternalCode == "7754"))
 // 					.Select($"{TaskName}: link bench", benchmarkStream,(sf,bench)=>{
 // 						sf.BenchmarkId=bench.Id;
 // 						return sf;
@@ -48,8 +48,8 @@ var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i =>
 
 
 //SET COUNTRY
-// var lux = ProcessContextStream.EfCoreSelect($"{TaskName}: get country from db", i => i.Set<Country>().Where(i=>i.IsoCode2 == "LU")).EnsureSingle($"{TaskName}: ensure one country");
-// var subFundStream2 = ProcessContextStream.EfCoreSelect("getsubFundStream2", i => i.Set<SubFund>().Where(p => p.InternalCode == "7754"))
+// var lux = ProcessContextStream.EfCoreSelect($"{TaskName}: get country from db", (ctx,j) => ctx.Set<Country>().Where(i=>i.IsoCode2 == "LU")).EnsureSingle($"{TaskName}: ensure one country");
+// var subFundStream2 = ProcessContextStream.EfCoreSelect("getsubFundStream2", (ctx,j) => ctx.Set<SubFund>().Where(p => p.InternalCode == "7754"))
 // 					.Select($"{TaskName}: link sc2", lux,(sf,country)=>{
 // 						sf.DomicileId=country.Id;
 // 						sf.CountryId=country.Id;
@@ -57,9 +57,9 @@ var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i =>
 // 					} ).EfCoreSave($"{TaskName}: save subfund2");
 
 //SET STATIC DATA
-// var setUrl  = ProcessContextStream.EfCoreSelect("setUrlSelect", i => i.Set<SubFund>().Where(p => p.InternalCode == "7754"))
+// var setUrl  = ProcessContextStream.EfCoreSelect("setUrlSelect", (ctx,j) => ctx.Set<SubFund>().Where(p => p.InternalCode == "7754"))
 // 						.Fix("setUrlFix", i => i.FixProperty(p => p.Url).AlwaysWith(p => "www.valuanalysis.com/the-fund/")).EfCoreSave("setUrlSave");
-// var setTimeHorizon = ProcessContextStream.EfCoreSelect("Set Time horizon", i => i.Set<SubFund>().Where(p => p.InternalCode == "7754"))
+// var setTimeHorizon = ProcessContextStream.EfCoreSelect("Set Time horizon", (ctx,j) => ctx.Set<SubFund>().Where(p => p.InternalCode == "7754"))
 //     .Fix("TH", i => i.FixProperty(p => p.RecommendedTimeHorizon).AlwaysWith(p => 7)).EfCoreSave("TH Save");
 
 

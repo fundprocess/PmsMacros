@@ -1,4 +1,4 @@
-var lastCompositionStream=ProcessContextStream.EfCoreSelect("Get Compositions", i => i
+var lastCompositionStream=ProcessContextStream.EfCoreSelect("Get Compositions", (ctx,j) => ctx
     .Set<PortfolioComposition>()
     .Include(inc=>inc.Positions)
     .Where(p => p.Portfolio.InternalCode == "6373008")
@@ -12,7 +12,7 @@ var lastCompositionStream=ProcessContextStream.EfCoreSelect("Get Compositions", 
             return a;
         });
 
-var transactionStream = ProcessContextStream.EfCoreSelect("Get Transactions", i => i
+var transactionStream = ProcessContextStream.EfCoreSelect("Get Transactions", (ctx,j) => ctx
     .Set<SecurityTransaction>()
     .Where(p => p.Portfolio.InternalCode == "6373008")
     ).
@@ -24,7 +24,7 @@ var transactionStream = ProcessContextStream.EfCoreSelect("Get Transactions", i 
             return a;
         });
 
-var portfolioStream = ProcessContextStream.EfCoreSelect("Get Portfolios", i => i
+var portfolioStream = ProcessContextStream.EfCoreSelect("Get Portfolios", (ctx,j) => ctx
     .Set<DiscretionaryPortfolio>()
     .Where(p => p.InternalCode == "6373008")
     )
