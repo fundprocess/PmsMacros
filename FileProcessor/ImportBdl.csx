@@ -121,7 +121,6 @@ class BdlSectransNode
     public string TradeCcy {get;set;}// <TradeCcy>EUR</TradeCcy>
     public string Counterparty {get;set;}// <Counterparty>BROWN BROTHERS HARRIMAN FUND ADMINISTRATION SERVICES (IRELAND) LTD</Counterparty>
     public double? GrossAmount {get;set;}// <GrossAmount>-11913.76</GrossAmount>
-
     public double? NetAmount {get;set;}// <NetAmount>-11913.76</NetAmount>
     public string BookCcy {get;set;}// <BookCcy>EUR</BookCcy>
     public double? BankFee {get;set;} //<BankFee>-82.9</BankFee>
