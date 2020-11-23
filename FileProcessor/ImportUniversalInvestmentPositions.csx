@@ -282,8 +282,7 @@ var equitySectorType = ProcessContextStream
                 Name = new MultiCultureString { ["en"] = "Equity Sector" },
                 Description = new MultiCultureString { ["en"] = "Equity Sector from Universal Investment" } 
         })
-    .EfCoreSave($"{TaskName}: Save Equity Sector type", o => o.SeekOn(ct => ct.Code)
-        )//.DoNotUpdateIfExists())
+    .EfCoreSave($"{TaskName}: Save Equity Sector type", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure Equity Sector type is single");
 
     // 2.1 Classification definition: EquitySector
@@ -295,8 +294,7 @@ var equitySectorClassificationStream = posFileStream
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.EquitySector) },
         ClassificationTypeId = ct.Id
     })
-    .EfCoreSave($"{TaskName}: Save Equity Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
-        .DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save Equity Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }).DoNotUpdateIfExists());
 
     // 2.2 Sub Classification definition: EQUITY SUB SECTOR
 var equitySubSectorClassificationStream = posFileStream
@@ -310,8 +308,7 @@ var equitySubSectorClassificationStream = posFileStream
         ParentId = i.ParentClass.Id, 
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.FileRow.EquitySubSector) }
     })
-    .EfCoreSave($"{TaskName}: Save Equity Sub-Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code })
-        .DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save Equity Sub-Sector ", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }).DoNotUpdateIfExists());
 
     // 3. Classification assignation
 var equitySubSectorAssignations = targetInstrumentStream
