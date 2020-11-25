@@ -469,7 +469,7 @@ var personStream = filePortfoliosStream
     .Select($"{TaskName}: create person entity", i => new Person
     {
         InternalCode = GetPortfolioInternalCode(i.fileRow.ContId),
-        FirstName = "TBC",
+        FirstName = "",
         LastName = $"{i.fileRow.ContId}",
         CurrencyId = i.CurrencyId.HasValue? i.CurrencyId.Value:(int?)null,
         CountryId = i.CountryId.HasValue? i.CountryId.Value:(int?)null,
@@ -575,7 +575,24 @@ var MIFIDCLASSAssignations = filePortfoliosStream
 
 #region TARGET SECURITIES
 
+var issuerSicavsStream = fileTargetSecuritiesStream
+    .Where($"Filter non Share Classes for SICAV", i=>IsShareClassInstrType(i.InstrType.Value))
+    .Distinct($"{TaskName}: distinct SecBase SICAV", i => GetSicavName(i.Issuer,i.SecName))
+    .LookupCountry($"{TaskName}: get Sicav related country", l => l.IssueDomic, 
+        (l,r) => new {FileRow = l, IssuerCountry=r })
+    .Select($"{TaskName}: Create Issuer SICAV", i => new Sicav{
+        InternalCode = GetSicavName(i.FileRow.Issuer,i.FileRow.SecName),
+        Name = GetSicavName(i.FileRow.Issuer,i.FileRow.SecName),
+        CountryId = (i.IssuerCountry != null)? i.IssuerCountry.Id : (int?) null,
+    })
+    .EfCoreSave($"{TaskName}: save target issuer Sicavs", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+
+var issuerSicavsStreamFixIssuer = issuerSicavsStream
+    .Fix($"{TaskName}: IssuerId ", i => i.FixProperty(i => i.IssuerId).AlwaysWith(i => i.Id))
+    .EfCoreSave("Fixing Sicav issuer Id");
+
 var issuerCompaniesStream = fileTargetSecuritiesStream
+    .Where($"Filter Share Classes", i=> !IsShareClassInstrType(i.InstrType.Value))
     .Distinct($"{TaskName}: distinct SecBase Issuers Companies", i => GetIssuerInternalCode(i.Issuer,i.SecName,i.InstrType.Value))
     .LookupCountry($"{TaskName}: get Sicav related companies country", l => l.IssueDomic, (l,r) => new {FileRow = l, IssuerCountry=r })
     .Select($"{TaskName}: Create Issuer companies",i=> new Company{
@@ -585,22 +602,6 @@ var issuerCompaniesStream = fileTargetSecuritiesStream
     })
     .EfCoreSave($"{TaskName}: save target issuer companies", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
-var issuerSicavsStream = fileTargetSecuritiesStream
-    .Where($"Filter Share Class for SICAV",i=>IsShareClassInstrType(i.InstrType.Value))
-    .Distinct($"{TaskName}: distinct SecBase SICAV", i => GetSicavName(i.Issuer,i.SecName))
-    .Lookup($"{TaskName}: get related issuer company", issuerCompaniesStream, 
-        i => GetIssuerInternalCode(i.Issuer,i.SecName,i.InstrType.Value), i => i.InternalCode,
-        (l,r) => new {FileRow = l, issuerCompany = r })
-     .LookupCountry($"{TaskName}: get Sicav related country", l => l.FileRow.IssueDomic, 
-        (l,r) => new {FileRow = l.FileRow, issuerCompany = l.issuerCompany, IssuerCountry=r })
-    .Select($"{TaskName}: Create Issuer SICAV", i => new Sicav{
-        InternalCode = GetSicavName(i.FileRow.Issuer,i.FileRow.SecName),
-        Name = GetSicavName(i.FileRow.Issuer,i.FileRow.SecName),
-        CountryId = (i.IssuerCountry != null)? i.IssuerCountry.Id : (int?) null,
-        IssuerId = i.issuerCompany.Id,  
-    })
-    .EfCoreSave($"{TaskName}: save target issuer Sicavs", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
-
 var targetSubFundsStream = fileTargetSecuritiesStream
     .Where($"Filter Share Class for Sub fund",i=>IsShareClassInstrType(i.InstrType.Value) && !string.IsNullOrEmpty(i.Issuer))
     .Distinct($"{TaskName}: distinct SecBase Sub-Funds", i => GetSubFundName(i.Issuer,i.SecName))
@@ -608,15 +609,19 @@ var targetSubFundsStream = fileTargetSecuritiesStream
         i => GetSicavName(i.Issuer,i.SecName), i => i.InternalCode,
         (l,r) => new {FileRow = l, Sicav = r })
     .LookupCountry($"{TaskName}: get related sub fund country", i => i.FileRow.Domicile, 
-        (l,r) => new {FileRow = l.FileRow, Sicav= l.Sicav, subFundCountry=r })
+        (l,r) => new {FileRow = l.FileRow, Sicav= l.Sicav, Country=r })
+    .LookupCurrency($"{TaskName}: get related sub fund currency", i => i.FileRow.InstrCcy , 
+        (l,r) => new {FileRow = l.FileRow, Sicav= l.Sicav, Country= l.Country, Currency = r })
     .Select($"{TaskName}: Create target subFund ", i => new SubFund{
         InternalCode =  GetSubFundName(i.FileRow.Issuer,i.FileRow.SecName),
         Name =  GetSubFundName(i.FileRow.Issuer,i.FileRow.SecName),
         ShortName  =  "from BDL",
-        CountryId = (i.subFundCountry != null)? i.subFundCountry.Id : (int?) null,
+        CountryId = (i.Country != null)? i.Country.Id : (int?) null,
+        DomicileId = (i.Country != null)? i.Country.Id : (int?) null,
         SicavId = i.Sicav.Id,
         SettlementNbDays = i.FileRow.FundValRdmpt,
         CutOffTime = TimeSpan.TryParse(i.FileRow.TechCutoff,out var res)?res: (TimeSpan?) null, //<TechCutoff>14:15</TechCutoff>
+        PricingFrequency = GetPricingFrequency(i.FileRow.ValFreq),
     })
     .EfCoreSave($"{TaskName}: save target sub fund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
@@ -950,6 +955,7 @@ var securityPricesStream = fileTargetSecuritiesStream
 //FX RATES
 var fxRatesStream = fileXratesStream
 	.LookupCurrency($"{TaskName}: get Fx Rate currency to", i=> i.Currency, (l,r) => new {FileRow = l, CurrencyTo=r})
+    .Where("${TaskName} filter unexisting currency", i=>i.FileRow.XrateDate!=null && i.CurrencyTo!=null)
 	.Select($"{TaskName}: Create Fx Rate", i => new FxRate{
 		CurrencyToId = i.CurrencyTo.Id,
 		Date = i.FileRow.XrateDate,
@@ -961,12 +967,14 @@ var fxRatesStream = fileXratesStream
 // return FileStream.WaitWhenDone($"{TaskName}: wait end of all save", savedPositions);
 
 #region Helpers
+FrequencyType GetPricingFrequency(int? ValFreq)
+    => (ValFreq !=null && ValFreq.Value == 7312)? FrequencyType.Weekly : FrequencyType.Daily; //<ValFreq>7310</ValFreq> 7310=daily, 7312=weekly
+
 bool IsShareClassInstrType(int instrType)
-    => (instrType >= 800 && instrType < 890) || (instrType == 895);
+    => (instrType >= 800 && instrType <= 890) || (instrType == 895);
 
 bool IsCashInstrType(int instrType)
     => (instrType >= 900 && instrType < 1000);
-
 Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country country, SubFund subfund)
 {
     Security security = null;
@@ -1011,6 +1019,7 @@ Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country
     if (security is RegularSecurity regularSecurity)
     {
         regularSecurity.CountryId = country!=null ? country.Id: (int?)null;
+        regularSecurity.PricingFrequency = GetPricingFrequency(fileRow.ValFreq);
     }
     if (security is ShareClass shareClass)
     {
@@ -1019,6 +1028,16 @@ Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country
         shareClass.MinimumInvestment = fileRow.MinSubsAmt;
         shareClass.EntryFee = fileRow.FrontEndLoad;
         shareClass.ExitFee = fileRow.BackEndLoad;
+        shareClass.IsOpenForInvestment = true;
+        if (fileRow.SecName.Split(" - ").Length ==2 )
+        {
+            var extension = fileRow.SecName.Split(" - ")[1].ToLower();
+            if (extension.Contains("dis"))
+                shareClass.DividendDistributionPolicy = DividendDistributionPolicy.Distribution;
+            if (extension.Contains("acc") || extension.Contains("cap"))
+                shareClass.DividendDistributionPolicy = DividendDistributionPolicy.Accumulation;
+        }
+        
     }
     if (security is Bond bond)
     {
@@ -1055,7 +1074,7 @@ string GetPortfolioInternalCode(string ContId)
 
 string GetMovementCode(string ContId, string OrderNr, string OrdTypId, double? NetAmount, DateTime bookDate)
     => ContId + "-" + OrderNr+ "-"
-        + (string.IsNullOrEmpty(OrdTypId)? "" : OrdTypId+ "-")
+        + (string.IsNullOrEmpty(OrdTypId)? "" : OrdTypId)
         + ( NetAmount.HasValue? NetAmount+ "-" : "" )
         + bookDate.ToString("yyyy-MM-dd") 
         + "-BDL";
