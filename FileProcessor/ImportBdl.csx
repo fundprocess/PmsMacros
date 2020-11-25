@@ -633,8 +633,11 @@ var targetSecurityInstrumentStream = fileTargetSecuritiesStream
         (l, r) => new {FileRow = l.FileRow ,Currency = l.Currency,Country = r  })
     .Lookup($"{TaskName}: lookup share class sub-fund",targetSubFundsStream,
         i=> GetSubFundName(i.FileRow.Issuer,i.FileRow.SecName), i=>i.InternalCode,
-        (l, r) => new {FileRow = l.FileRow ,Currency = l.Currency,Country = l.Country, SubFund = r })
-    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.FileRow, i.Currency, i.Country, i.SubFund))
+        (l, r) => new {FileRow = l.FileRow ,Currency = l.Currency,Country = l.Country, SubFund = r }) 
+    .Lookup($"{TaskName}: lookup issuer",issuerCompaniesStream,
+        i=> GetIssuerInternalCode(i.FileRow.Issuer,i.FileRow.SecName,i.FileRow.InstrType.Value), i=>i.InternalCode,
+        (l, r) => new {FileRow = l.FileRow, Currency = l.Currency,Country = l.Country, SubFund = l.SubFund, Issuer = r })
+    .Select($"{TaskName}: create target security", i => CreateTargetSecurity(i.FileRow, i.Currency, i.Country, i.SubFund, i.Issuer))
     //.WhereCorrelated($"{TaskName}: keep known security instrument types", i => i != null)
     .EfCoreSave($"{TaskName}: save target security", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
@@ -971,15 +974,20 @@ FrequencyType GetPricingFrequency(int? ValFreq)
     => (ValFreq !=null && ValFreq.Value == 7312)? FrequencyType.Weekly : FrequencyType.Daily; //<ValFreq>7310</ValFreq> 7310=daily, 7312=weekly
 
 bool IsShareClassInstrType(int instrType)
-    => (instrType >= 800 && instrType <= 890) || (instrType == 895);
+    => (instrType >= 800 && instrType < 890) || (instrType == 895);
+
+bool IsEtfInstrType(int instrType)
+    => instrType == 890;
 
 bool IsCashInstrType(int instrType)
     => (instrType >= 900 && instrType < 1000);
-Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country country, SubFund subfund)
+Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country country, SubFund subfund,Company issuer)
 {
     Security security = null;
     if (IsShareClassInstrType(fileRow.InstrType.Value))
         security = new ShareClass();
+    else if (IsEtfInstrType(fileRow.InstrType.Value))
+       security =security = new Etf();
     else if (IsCashInstrType(fileRow.InstrType.Value))
        security = new Cash(){Rate = 0, AccountType = AccountType.MarginAccount};
     else
@@ -996,9 +1004,6 @@ Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country
             case int n when (n >= 310 && n <= 320):
                 security = new Option();
                 break;        
-            case 890:
-                security = new Etf();
-                break;
             default:
                 throw new Exception($"Unknown instrument type {fileRow.InstrType.Value} not managed: (isin: {fileRow.Isin}, name: {fileRow.SecName})");
         }
@@ -1020,6 +1025,8 @@ Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country
     {
         regularSecurity.CountryId = country!=null ? country.Id: (int?)null;
         regularSecurity.PricingFrequency = GetPricingFrequency(fileRow.ValFreq);
+        if (issuer != null)
+            regularSecurity.IssuerId = issuer.Id;
     }
     if (security is ShareClass shareClass)
     {
@@ -1119,7 +1126,7 @@ string GetSubFundName(string issuerStr,string secName)
         : secName.Split(" - ")[0];
 
 string GetIssuerInternalCode(string issuerStr,string secName,int instrType)
-    => IsShareClassInstrType(instrType)? GetSicavName(issuerStr,secName): issuerStr;
+    => IsShareClassInstrType(instrType) || IsEtfInstrType(instrType)? GetSicavName(issuerStr,secName): issuerStr;
 
 string GetSecurityInternalCode(string isin, string securityCode)
     => (!string.IsNullOrEmpty(isin)) ? isin : securityCode;
