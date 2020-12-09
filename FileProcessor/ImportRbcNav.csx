@@ -1,10 +1,4 @@
-(string FundName, string SicavName) SplitFundName(string name)
-{
-    var idx = name.IndexOf("-");
-    if (idx < 0) return (name, (string)null);
-    return (name.Substring(idx + 1).Trim(), name.Substring(0, idx).Trim());
-}
-
+#region FILE DEFINITION
 var rbcNavFileDefinition = FlatFileDefinition.Create(i => new
 {
     // AmountRedemption = i.ToNumberColumn<double?>("AMOUNT REDEMPTION", "."),
@@ -26,7 +20,9 @@ var rbcNavFileDefinition = FlatFileDefinition.Create(i => new
     TotalNetAsset = i.ToNumberColumn<double>("TOTAL NET ASSET", "."),
     //TotalTisAmount = i.ToNumberColumn<double>("TOTAL TIS AMOUNT", "."),
 }).IsColumnSeparated(',');
+#endregion
 
+#region STREAMS
 var navFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: Parse nav file", rbcNavFileDefinition)
     .SetForCorrelation($"{TaskName}: Set correlation key")
@@ -34,52 +30,104 @@ var navFileStream = FileStream
         .FixProperty(i => i.FundCurrency).IfNullWith(i => i.Currency)
         .FixProperty(i => i.NbShares).IfNullWith(i => i.TotalNetAsset / i.NavPerShare));
 
-// Sicav
+var euroCurrency = ProcessContextStream
+    .EfCoreSelect($"{TaskName}: get euroCurrency", (ctx, j) => ctx.Set<Currency>().Where(c => c.IsoCode == "EUR"))
+    .EnsureSingle($"{TaskName}: ensures only one euro currency");
+
+var luxembourgCountry = ProcessContextStream
+    .EfCoreSelect($"{TaskName}: get Luxembourg Country", (ctx, j) => ctx.Set<Country>().Where(c => c.IsoCode2 == "LU"))
+    .EnsureSingle($"{TaskName}: ensures only one LU Country");
+
+#endregion
+
+#region SICAV
 var sicavStream = navFileStream
+    .Distinct($"{TaskName}: Distinct sicavs", i => SplitFundName(i.FundName).SicavName)
+    .Select($"{TaskName}: Get SICAV Euro Ccy ", euroCurrency, (i, j) => new {FileRow = i, EuroCcy = j, FundCode = i.FundCode})
+    .Select($"{TaskName}: Get SICAV Luxembourg Country",luxembourgCountry, (l,r) => new {l.FileRow, l.EuroCcy , Country = r })
     .Select($"{TaskName}: Create sicavs", ProcessContextStream, (i, ctx) => new Sicav
     {
-        InternalCode = SplitFundName(i.FundName).SicavName,
-        Name = SplitFundName(i.FundName).SicavName,
-        IssuerId = ctx.TenantId
+        InternalCode = SplitFundName(i.FileRow.FundName).SicavName,
+        Name = SplitFundName(i.FileRow.FundName).SicavName,
+        IssuerId = ctx.TenantId,
+        Culture = new CultureInfo("en"),
+        CountryId = i.Country.Id,
+        CurrencyId = i.EuroCcy.Id,
+        YearEnd = new DateOfYear(12,31),
+        LegalForm = LegalForm.SICAV,
+        Regulated = true,
     })
-    .Distinct($"{TaskName}: Distinct sicavs", i => i.InternalCode)
-    .EfCoreSave($"{TaskName}: Insert sicav", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Insert sicav", o => o.SeekOn(i => i.InternalCode).AlternativelySeekOn(i => i.Name).DoNotUpdateIfExists());
+#endregion
 
-// Portfolio
-var portfolioStream = navFileStream
-    .LookupCurrency($"{TaskName}: Get related currency for portfolio", l => l.FundCurrency, (l, r) => new { FileRow = l, Currency = r })
-    .CorrelateToSingle($"{TaskName}: Get related sicav", sicavStream, (l, r) => new { l.Currency, l.FileRow, Sicav = r })
+#region SUBFUNDS
+var subfundsStream = navFileStream
+    .Distinct($"{TaskName}: Distinct portfolios", i => i.FundCode)
+    .LookupCurrency($"{TaskName}: Get related currency for portfolio", l => l.Currency, (l, r) => new { FileRow = l, Currency = r })
+    .Select($"{TaskName}: Get Sub-Fund Luxembourg Country",luxembourgCountry, (l,r) => new {FileRow = l.FileRow, Currency = l.Currency, Country = r })
+    .CorrelateToSingle($"{TaskName}: Get related sicav", sicavStream, (l, r) => new { l.FileRow, l.Currency, l.Country, Sicav = r })
     .Select($"{TaskName}: Create portfolios", ProcessContextStream, (i, ctx) => new SubFund
     {
         InternalCode = i.FileRow.FundCode,
         Name = SplitFundName(i.FileRow.FundName).FundName,
         ShortName = SplitFundName(i.FileRow.FundName).FundName.Truncate(MaxLengths.ShortName),
         CurrencyId = i.Currency?.Id,
+        CountryId = i.Country.Id,
+        DomicileId = i.Country.Id,
         SicavId = i.Sicav?.Id,
-        PricingFrequency = FrequencyType.Daily
+        PricingFrequency = FrequencyType.Daily,
+        CutOffTime = TimeSpan.TryParse("14:00",out var res)?res: (TimeSpan?) null,
+        SettlementNbDays = 3,
     })
-    .Distinct($"{TaskName}: Distinct portfolios", i => i.InternalCode)
-    .EfCoreSave($"{TaskName}: Insert portfolios", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save SubFund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+#endregion
 
-// Shareclass
+#region SHARE CLASSES (INTERNAL)
 var shareClassStream = navFileStream
     .LookupCurrency($"{TaskName}: Get related currency for shareclass", l => l.Currency, (l, r) => new { FileRow = l, Currency = r })
-    .CorrelateToSingle($"{TaskName}: Get related portfolio", portfolioStream, (l, r) => new { l.Currency, l.FileRow, Portfolio = r })
-    .Select($"{TaskName}: Create share classes", i => new ShareClass
-    {
-        InternalCode = i.FileRow.IsinCode,
-        Name = $"{i.FileRow.NameOfShares} {i.FileRow.Currency}",
-        ShortName = $"{i.FileRow.NameOfShares} {i.FileRow.Currency}".Truncate(MaxLengths.ShortName),
-        CurrencyId = i.Currency?.Id,
-        SubFundId = i.Portfolio?.Id,
-        Isin = i.FileRow.IsinCode
-    })
-    .Distinct($"{TaskName}: Distinct shareclass", i => i.InternalCode)
-    .EfCoreSave($"{TaskName}: Insert share classes", o => o.SeekOn(i => i.Isin).AlternativelySeekOn(i => i.InternalCode).DoNotUpdateIfExists());
+    .CorrelateToSingle($"{TaskName}: Get related sub fund", subfundsStream, (l, r) => new { l.Currency, l.FileRow, SubFund = r })
+    .Select($"{TaskName}: Create share classes", i => new {
+        i.FileRow.TotalNetAsset,
+        ShareClass=new ShareClass
+        {
+            InternalCode = i.FileRow.IsinCode,
+            Name = $"{SplitFundName(i.FileRow.FundName).FundName} - {i.FileRow.NameOfShares} {i.FileRow.Currency}",
+            ShortName = $"{i.FileRow.NameOfShares} {i.FileRow.Currency}".Truncate(MaxLengths.ShortName),
+            CurrencyId = i.Currency?.Id,
+            SubFundId = i.SubFund!=null? i.SubFund.Id: throw new Exception($"Sub fund not found for share class: {i.FileRow.NameOfShares} {i.FileRow.Currency}"),
+            Isin = i.FileRow.IsinCode,
+            InvestorType = i.FileRow.NameOfShares.Contains("I")? InvestorType.Institutional
+                            : i.FileRow.NameOfShares.Contains("R")? InvestorType.Retail 
+                            : i.FileRow.NameOfShares.Contains("P")? InvestorType.Retail 
+                            : (InvestorType?) null,
+            DividendDistributionPolicy  = i.FileRow.NameOfShares.Contains("D")? DividendDistributionPolicy.Distribution : 
+                                            DividendDistributionPolicy.Accumulation,
+        }})
+    .Distinct($"{TaskName}: Distinct shareclass", i => i.ShareClass.InternalCode)
+    .EfCoreSave($"{TaskName}: Insert share classes", o => o
+        .Entity(i=>i.ShareClass)
+        .SeekOn(i => i.Isin)
+        .AlternativelySeekOn(i => i.InternalCode)
+        .Output((i,j)=> i)
+        .DoNotUpdateIfExists());
 
+var primaryShareClassStream=shareClassStream
+        .Sort($"{TaskName}: Sort share classes by AUM desc", i => new {i.ShareClass.SubFundId,i.TotalNetAsset}, new {FundCode = 1,TotalNetAsset = -2})
+        .Distinct($"{TaskName}: Distinct AUM sorted share classes", i => i.ShareClass.SubFundId); //take the shareclass id that comes first at it has the biggest aum for the subfund
+
+var subfundsPrimaryShareClassStream = subfundsStream
+    .CorrelateToSingle($"{TaskName}: get related primary share class", primaryShareClassStream,(sf, sc)=> {
+        sf.PrimaryShareClassId = sc?.ShareClass?.Id;
+        return sf;
+    })
+    .EfCoreSave($"{TaskName}: save sf");
+
+#endregion
+
+#region HISTORICAL VALUES
 // Portfolio HV
 var savedPortfolioHistoricalValueStream = navFileStream
-    .CorrelateToSingle($"{TaskName}: Get related portfolio for HV", portfolioStream, (l, r) => new { l.FundTotalNetAsset, l.NbShares, l.QuantitySubscription, l.QuantityRedemption, l.NavDate, PortfolioId = r.Id })
+    .CorrelateToSingle($"{TaskName}: Get related portfolio for HV", subfundsStream, (l, r) => new { l.FundTotalNetAsset, l.NbShares, l.QuantitySubscription, l.QuantityRedemption, l.NavDate, PortfolioId = r.Id })
     .Pivot($"{TaskName}: Distinct portfolio and date", i => new { i.PortfolioId, i.NavDate }, i => new
     {
         TNA = AggregationOperators.First(i.FundTotalNetAsset),
@@ -107,7 +155,7 @@ var savedPortfolioHistoricalValueStream = navFileStream
 
 // ShareClass HV
 var savedShareClassHistoricalValueStream = navFileStream
-    .CorrelateToSingle($"{TaskName}: Get related shareclass for HV", shareClassStream, (l, r) => new { FileRow = l, ShareClass = r })
+    .CorrelateToSingle($"{TaskName}: Get related shareclass for HV", shareClassStream, (l, r) => new { FileRow = l, ShareClass = r.ShareClass })
     .Distinct($"{TaskName}: Distinct historical values", i => new { i.FileRow.NavDate, i.ShareClass.Isin })
     .CrossApplyEnumerable($"{TaskName}: Unpivot share class historical values",
         i => new[]{
@@ -128,5 +176,16 @@ var savedShareClassHistoricalValueStream = navFileStream
             Value = j.Value.Value
         }))
     .EfCoreSave($"{TaskName}: Save share class hv", o => o.SeekOn(i => new { i.Date, i.SecurityId, i.Type }));
+#endregion
 
-return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", savedPortfolioHistoricalValueStream, savedShareClassHistoricalValueStream);
+return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", savedPortfolioHistoricalValueStream, savedShareClassHistoricalValueStream,
+            subfundsPrimaryShareClassStream);
+
+#region Helpers
+(string FundName, string SicavName) SplitFundName(string name)
+{
+    var idx = name.IndexOf("-");
+    if (idx < 0) return (name, (string)null);
+    return (name.Substring(idx + 1).Trim(), name.Substring(0, idx).Trim());
+}
+#endregion
