@@ -39,7 +39,7 @@ var rbcPositionFileDefinition = FlatFileDefinition.Create(i => new
     RowGuid = i.ToRowGuid(),
     FilePath = i.ToSourceName(),
     RowNumber = i.ToLineNumber(),
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 #endregion
 
 #region Streams
@@ -139,12 +139,20 @@ var issuerCompaniesStream = targetSecuritiesFileStream
 #endregion
 
 #region Target Securities (Sec + Cash)
+//Cash Issuer
+var cashIssuerStream = ProcessContextStream
+    .Select($"{TaskName}: Create create RBC as cash issuer", 
+        ctx => new Company { InternalCode = "20009", Name = "RBC Investor Services Luxembourg",Regulated=true,Culture=new CultureInfo("en")})
+    .EfCoreSave($"{TaskName}: Save RBC as cash issuer", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists())
+    .EnsureSingle($"{TaskName}: Ensure RBC as cash issuer is single");
+
 // Create Create Cash Securities
 var cashStream = targetSecuritiesFileStream
     .Where($"{TaskName}: Keep only cash", s => s.SecurityType == ImportedSecurityType.Cash)
     .Distinct($"{TaskName}: Distinct cash", c => c.InternalCode)
     .LookupCurrency($"{TaskName}: Get cash related currency", i => i.FileRow.SecurityCcy, (l, r) => new { l.FileRow, Currency = r })
-    .Select($"{TaskName}: Create cash", s => CreateCash(s.FileRow.InstrumentName, s.Currency?.Id, s.FileRow.SecurityCcy, s.FileRow.AccountNumber))
+    .Select($"{TaskName}: Create cash",cashIssuerStream, (s,ci) => CreateCash(s.FileRow.InstrumentName, s.Currency?.Id, 
+            s.FileRow.SecurityCcy, s.FileRow.AccountNumber, ci !=null? ci.Id : (int?)null ))
     .EfCoreSave($"{TaskName}: Insert cash", o => o.SeekOn(c => c.InternalCode).Output((i, e) => (Security)e).DoNotUpdateIfExists());
 
 // Create Target Securities
@@ -164,14 +172,15 @@ var targetSecuritiesStream = targetSecuritiesFileStream
                     i.FileRow.InstrumentName, i.InternalCode, i.FileRow.NextCouponDate, i.FileRow.MaturityDate, 
                     i.FileRow.QuotationPlace, i.FileRow.PutOrCall, i.FileRow.OptionStyle, i.Country?.Id, 
                     i.FileRow.ContractSize, i.FileRow.StrikePrice, i.FileRow.LastCouponDate,i.Issuer,i.TargetSubFund,i.FileRow.InternalNumber))
-    .EfCoreSave($"{TaskName}: Save target securities", o => o.SeekOn(c => c.Isin).AlternativelySeekOn(c => c.InternalCode).Output((i, e) => (Security)e).DoNotUpdateIfExists());
+    .EfCoreSave($"{TaskName}: Save target securities", o => o.SeekOn(c => c.Isin).AlternativelySeekOn(c => c.InternalCode)
+        .Output((i, e) => (Security)e).DoNotUpdateIfExists());
 #endregion
 
 #region Target Security Classifications
 // Create SecurityClassificationType
 var classificationTypeStream = ProcessContextStream
     .Select($"{TaskName}: Create RBC classification type", ctx => new SecurityClassificationType { Code = "RBC Economic Sector", Name = new MultiCultureString { ["en"] = "RBC Economic Sector" } })
-    .EfCoreSave($"{TaskName}: Save RBC classification type", o => o.SeekOn(ct => ct.Code))
+    .EfCoreSave($"{TaskName}: Save RBC classification type", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure RBC classification type is single");
 
 // Create SecurityClassification
@@ -183,7 +192,7 @@ var classificationStream = posFileStream
         Name = new MultiCultureString { ["en"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.EconomicSectorLabel.ToLower()) },
         ClassificationTypeId = ct.Id
     })
-    .EfCoreSave($"{TaskName}: Save RBC classification", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }));
+    .EfCoreSave($"{TaskName}: Save RBC classification", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }).DoNotUpdateIfExists());
 
 // ClassificationOfSecurity
 var classificationOfSecurityStream = targetSecuritiesStream
@@ -540,11 +549,7 @@ SecurityInstrument CreateTargetSecurity(ImportedSecurityType type, int? currency
     return null;
 }
 
-Cash CreateCash(
-    string instrumentName,
-    int? subFundCurrencyId,
-    string subFundCurrencyCode,
-    string accountNumber)
+Cash CreateCash(string instrumentName,int? subFundCurrencyId,string subFundCurrencyCode,string accountNumber, int? issuerId)
 {
     return new Cash
     {
@@ -552,6 +557,7 @@ Cash CreateCash(
         ShortName = $"{instrumentName} ({subFundCurrencyCode})".Truncate(MaxLengths.ShortName),
         CurrencyId = subFundCurrencyId,
         InternalCode = $"{accountNumber}-{subFundCurrencyCode}",
+        IssuerId = issuerId,
     };
 }
 

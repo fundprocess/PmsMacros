@@ -127,7 +127,8 @@ var targetCashStream = posFileStream
     })
     .Distinct($"{TaskName}: distinct positions cash", i => i.SecurityCode)
     .LookupCountry($"{TaskName}: get related country for cash", l => l.FileRow.GeoSectCode, (l, r) => new { l.FileRow, l.SecurityCode, Country = r })
-    .LookupCurrency($"{TaskName}: get related currency for cash", l => l.FileRow.InstrEvaluationCcy, (l, r) => new { l.FileRow, l.SecurityCode, l.Country, Currency = r })
+    .LookupCurrency($"{TaskName}: get related currency for cash", l => l.FileRow.InstrEvaluationCcy, 
+        (l, r) => new { l.FileRow, l.SecurityCode, l.Country, Currency = r })
     .Select($"{TaskName}: create cash", i => CreateSecurityForComposition(
             i.FileRow.InstrCategory,
             i.FileRow.Category1,
@@ -148,7 +149,8 @@ var targetInstrumentStream = posFileStream
     .Fix($"{TaskName}: recompute isin", i => i.FixProperty(p => p.Isin).AlwaysWith(p => p.Isin == "-1" ? null : p.Isin))
     .ReKey($"{TaskName}: Uniformize target instrument codes", i => new { i.Isin, i.InstrCode })
     .Distinct($"{TaskName}: distinct positions security", i => new { i.Isin, i.InstrCode })
-    .LookupCountry($"{TaskName}: get related country for target security", l => l.FileRow.GeoSectCode, (l, r) => new { l.FileRow, Country = r })
+    .LookupCountry($"{TaskName}: get related country for target security", l => l.GeoSectCode, 
+        (l, r) => new { FileRow = l, Country = r })
     .LookupCurrency($"{TaskName}: get related currency for target security", l => l.FileRow.InstrEvaluationCcy, (l, r) => new { l.FileRow, l.Country, Currency = r })
     .Select($"{TaskName}: create instrument", i => CreateSecurityForComposition(
             i.FileRow.InstrCategory,
@@ -167,11 +169,14 @@ var targetInstrumentStream = posFileStream
 
 // ClassificationOfSecurity
 var classification1OfSecurityStream = targetInstrumentStream
-    .CorrelateToSingle($"{TaskName}: Get related security classification 1", classification1Stream, (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
+    .CorrelateToSingle($"{TaskName}: Get related security classification 1", classification1Stream, 
+    (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
 var classification2OfSecurityStream = targetInstrumentStream
-    .CorrelateToSingle($"{TaskName}: Get related security classification 2", classification2Stream, (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
+    .CorrelateToSingle($"{TaskName}: Get related security classification 2", classification2Stream, 
+    (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
 var ecoSectorOfSecurityStream = targetInstrumentStream
-    .CorrelateToSingle($"{TaskName}: Get related eco sector", ecoSectorClassificationStream, (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
+    .CorrelateToSingle($"{TaskName}: Get related eco sector", ecoSectorClassificationStream, 
+    (s, c) => new ClassificationOfSecurity { ClassificationTypeId = c.ClassificationTypeId, SecurityId = s.Id, ClassificationId = c.Id });
 
 var classificationOfSecurityStream = classification1OfSecurityStream
     .Union($"{TaskName}: merge classification 1 & 2 of security", classification2OfSecurityStream)
@@ -305,7 +310,9 @@ FrequencyType? MapPeriodicity(int? couponPeriodicity)
         default: return null;
     }
 }
-Security CreateSecurityForComposition(string instrumentCategory, string category1, string category2, string instrumentCode, string instrumentName, string instrumentIsin, int? currencyId, DateTime? maturityDate, int? countryId, double? nominal, int? couponPeriodicity)
+Security CreateSecurityForComposition(string instrumentCategory, string category1, string category2, string instrumentCode, 
+    string instrumentName, string instrumentIsin, int? currencyId, DateTime? maturityDate, 
+    int? countryId, double? nominal, int? couponPeriodicity)
 {
     Security security = null;
     switch (instrumentCategory.ToLower())

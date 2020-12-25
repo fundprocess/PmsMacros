@@ -23,7 +23,7 @@ var rbcCashFileDefinition = FlatFileDefinition.Create(i => new
     IsinCode = i.ToColumn("ISIN CODE"),
     ValueDate = i.ToDateColumn("VALUE DATE", "yyyyMMdd"),
     FileName = i.ToSourceName()
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 
 var savedCashMovementStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse transaction file", rbcCashFileDefinition)

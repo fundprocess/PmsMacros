@@ -13,7 +13,7 @@ var rbcFxFileDefinition = FlatFileDefinition.Create(i => new
     SoldAmount = i.ToNumberColumn<double>("Sold Amount", "."),
     SoldCcy = i.ToColumn("Sold CCY"),
     ContractNo = i.ToColumn("Contract No"),
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 
 var transFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse transaction file", rbcFxFileDefinition)
@@ -126,7 +126,7 @@ FxTransaction CreateFxTransaction(
         SoldAmount = soldAmount,
         SoldCurrencyId = soldCcyId,
         PortfolioId = portfolioId,
-        TransactionCode = $"{fund}-{tradeDate:yyyyMMdd}-{contractNo}-{brokerCode}",
+        TransactionCode = $"{fund}-{tradeDate:yyyyMMdd}-{navDate:yyyyMMdd}-{contractNo}-{brokerCode}",
         TradeDate = tradeDate
     };
 }

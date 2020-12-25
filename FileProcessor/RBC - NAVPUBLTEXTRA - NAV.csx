@@ -19,7 +19,7 @@ var rbcNavFileDefinition = FlatFileDefinition.Create(i => new
     TotalNetAssetBeforeDividend = i.ToNumberColumn<double>("TNA BEFORE DIVIDEND", "."),
     TotalNetAsset = i.ToNumberColumn<double>("TOTAL NET ASSET", "."),
     //TotalTisAmount = i.ToNumberColumn<double>("TOTAL TIS AMOUNT", "."),
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 #endregion
 
 #region STREAMS
@@ -102,6 +102,7 @@ var shareClassStream = navFileStream
                             : (InvestorType?) null,
             DividendDistributionPolicy  = i.FileRow.NameOfShares.Contains("D")? DividendDistributionPolicy.Distribution : 
                                             DividendDistributionPolicy.Accumulation,
+            IsOpenForInvestment = true
         }})
     .Distinct($"{TaskName}: Distinct shareclass", i => i.ShareClass.InternalCode)
     .EfCoreSave($"{TaskName}: Insert share classes", o => o
@@ -110,17 +111,6 @@ var shareClassStream = navFileStream
         .AlternativelySeekOn(i => i.InternalCode)
         .Output((i,j)=> i)
         .DoNotUpdateIfExists());
-
-var primaryShareClassStream=shareClassStream
-        .Sort($"{TaskName}: Sort share classes by AUM desc", i => new {i.ShareClass.SubFundId,i.TotalNetAsset}, new {FundCode = 1,TotalNetAsset = -2})
-        .Distinct($"{TaskName}: Distinct AUM sorted share classes", i => i.ShareClass.SubFundId); //take the shareclass id that comes first at it has the biggest aum for the subfund
-
-var subfundsPrimaryShareClassStream = subfundsStream
-    .CorrelateToSingle($"{TaskName}: get related primary share class", primaryShareClassStream,(sf, sc)=> {
-        sf.PrimaryShareClassId = sc?.ShareClass?.Id;
-        return sf;
-    })
-    .EfCoreSave($"{TaskName}: save sf");
 
 #endregion
 
@@ -151,6 +141,8 @@ var savedPortfolioHistoricalValueStream = navFileStream
                 Type = j.Type,
                 Value = j.Value.Value,
             }))
+    .Where($"{TaskName}: Where hv value!=0",
+        i=> (i.Type != HistoricalValueType.RED && i.Type != HistoricalValueType.SUB) || i.Value !=0) 
     .EfCoreSave($"{TaskName}: Save portfolio hv", o => o.SeekOn(i => new { i.Date, i.PortfolioId, i.Type }));
 
 // ShareClass HV
@@ -178,8 +170,8 @@ var savedShareClassHistoricalValueStream = navFileStream
     .EfCoreSave($"{TaskName}: Save share class hv", o => o.SeekOn(i => new { i.Date, i.SecurityId, i.Type }));
 #endregion
 
-return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", savedPortfolioHistoricalValueStream, savedShareClassHistoricalValueStream,
-            subfundsPrimaryShareClassStream);
+return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", savedPortfolioHistoricalValueStream, 
+savedShareClassHistoricalValueStream,);
 
 #region Helpers
 (string FundName, string SicavName) SplitFundName(string name)

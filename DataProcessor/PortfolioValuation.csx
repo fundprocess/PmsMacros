@@ -54,6 +54,7 @@ var portfolioStream = ProcessContextStream.EfCoreSelect("Get Portfolios", (ctx,j
         .SeekOn(i=>new {i.PortfolioId, i.Date})
         .WithMode(SaveMode.EntityFrameworkCore));
 
+ProcessContextStream.WaitWhenDone("wait till everything is done",portfolioStream);
 
 List<PortfolioComposition> GetCompositions(DiscretionaryPortfolio portfolio, PortfolioComposition lastComposition, List<SecurityTransaction> securityTransactions){
     if(lastComposition==null && securityTransactions==null)

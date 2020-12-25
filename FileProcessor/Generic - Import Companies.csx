@@ -18,7 +18,7 @@ var fileDefinition = FlatFileDefinition.Create(i => new
     StreetAddress = i.ToColumn("StreetAddress"),
     ZipCode = i.ToColumn("ZipCode"),
     Location = i.ToColumn("Location"),
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(',').WithEncoding(System.Text.Encoding.GetEncoding(1252));
 
 var companyFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse company file", fileDefinition)

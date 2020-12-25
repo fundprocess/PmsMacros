@@ -1,21 +1,22 @@
 var fileDefinition = FlatFileDefinition.Create(i => new
 {
-    InternalCode  = i.ToColumn("InternalCode"),
-    Title  = i.ToColumn("Title"),
-    FirstName  = i.ToColumn("FirstName"),
-    LastName  = i.ToColumn("LastName"),
-    Email  = i.ToColumn("Email"),
-    MobileNumber  = i.ToColumn("MobileNumber"),
-    CountryIso2  = i.ToColumn("CountryIso2"),
-    CcyIso  = i.ToColumn("CcyIso"),
-    PhoneNumber  = i.ToColumn("PhoneNumber"),
-    Culture  = i.ToColumn("Culture"),
-    IdCardNumber  = i.ToColumn("IdCardNumber"),
-    PassportNumber  = i.ToColumn("PassportNumber"),
-    StreetAddress  = i.ToColumn("StreetAddress"),
-    ZipCode  = i.ToColumn("ZipCode"),
-    Location  = i.ToColumn("Location"),
-}).IsColumnSeparated(',');
+    InternalCode = i.ToColumn("InternalCode"),
+    Subject = i.ToColumn("Login"),
+    Title = i.ToColumn("Title"),
+    FirstName = i.ToColumn("FirstName"),
+    LastName = i.ToColumn("LastName"),
+    Email = i.ToColumn("Email"),
+    MobileNumber = i.ToColumn("MobileNumber"),
+    CountryIso2 = i.ToColumn("CountryIso2"),
+    CcyIso = i.ToColumn("CcyIso"),
+    PhoneNumber = i.ToColumn("PhoneNumber"),
+    Culture = i.ToColumn("Culture"),
+    IdCardNumber = i.ToColumn("IdCardNumber"),
+    PassportNumber = i.ToColumn("PassportNumber"),
+    StreetAddress = i.ToColumn("StreetAddress"),
+    ZipCode = i.ToColumn("ZipCode"),
+    Location = i.ToColumn("Location"),
+}).IsColumnSeparated(',').WithEncoding(System.Text.Encoding.GetEncoding(1252));
 
 var personFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse persons file", fileDefinition)
@@ -33,6 +34,7 @@ var stream = personFileStream
         FirstName = i.fileRow.FirstName,
         LastName = i.fileRow.LastName,
         Email = i.fileRow.Email,
+        Subject = i.fileRow.Subject,
         MobileNumber = i.fileRow.MobileNumber,
         CurrencyId = i.CurrencyId.HasValue? i.CurrencyId.Value:(int?)null,
         CountryId = i.CountryId.HasValue? i.CountryId.Value:(int?)null,

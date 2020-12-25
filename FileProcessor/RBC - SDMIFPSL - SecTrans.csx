@@ -21,7 +21,7 @@ var rbcTransactionFileDefinition = FlatFileDefinition.Create(i => new
     OperationType = i.ToColumn("Operation Type"),
     ValueDate = i.ToDateColumn("Value Date", "yyyyMMdd"),
     FileName = i.ToSourceName()
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 
 var transFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: parse transaction file", rbcTransactionFileDefinition);
@@ -65,29 +65,12 @@ var savedTransactionStream = transFileStream
 return FileStream.WaitWhenDone($"{TaskName}: wait till everything is saved", savedTransactionStream);
 
 SecurityTransaction CreateSecurityTransaction(
-    int portfolioId,
-    int securityId,
-    string dealDescription,
-    DateTime navDate,
-    string fundCode,
-    DateTime tradeDate,
-    string cNId,
-    string nEntryPtf,
-    string nEntry,
-    double? feesLocalCcy,
-    double purchAmountLocalCcyGross,
-    double purchAmountFundCcyNet,
-    double purchAmountLocalCcyNet,
-    double salesAmountLocalCcyGross,
-    double salesAmountFundCcyNet,
-    double salesAmountLocalCcyNet,
-    double vXchgeRate,
-    double priceLocalCcy,
-    double quantity,
-    string isinCode,
-    string operationType,
-    DateTime valueDate
-)
+    int portfolioId, int securityId,string dealDescription,
+    DateTime navDate, string fundCode,
+    DateTime tradeDate, string cNId,string nEntryPtf, string nEntry,
+    double? feesLocalCcy,double purchAmountLocalCcyGross, double purchAmountFundCcyNet, double purchAmountLocalCcyNet, 
+    double salesAmountLocalCcyGross, double salesAmountFundCcyNet, double salesAmountLocalCcyNet, 
+    double vXchgeRate, double priceLocalCcy, double quantity, string isinCode, string operationType, DateTime valueDate)
 {
     var type = string.Equals(operationType, "purch", StringComparison.InvariantCultureIgnoreCase) ? OperationType.Buy : OperationType.Sale;
     return new SecurityTransaction
@@ -96,6 +79,7 @@ SecurityTransaction CreateSecurityTransaction(
         SecurityId = securityId,
         OperationType = type,
         // TransactionCode = cNId,
+        TransactionCode = $"{tradeDate:yyyyMMdd}-{navDate:yyyyMMdd}-{cNId}-{nEntryPtf}-{nEntry}",
         TransactionType = TransactionType.SecurityMovement,
         Description = dealDescription,
         TradeDate = tradeDate,
@@ -109,7 +93,5 @@ SecurityTransaction CreateSecurityTransaction(
         NetAmountInPortfolioCcy = purchAmountFundCcyNet + salesAmountFundCcyNet,
         FeesInSecurityCcy = feesLocalCcy,
         GrossAmountInPortfolioCcy = (purchAmountLocalCcyGross + salesAmountLocalCcyGross) / vXchgeRate,
-
-        TransactionCode = $"{tradeDate:yyyyMMdd}-{cNId}-{nEntryPtf}-{nEntry}"
     };
 }

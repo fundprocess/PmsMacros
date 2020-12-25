@@ -11,7 +11,7 @@ var rbcAccountBalanceFileDefinition = FlatFileDefinition.Create(i => new
     AccountingChartLabelLevel1 = i.ToColumn("Accounting Chart Label Level 1"),
     BalanceChartLabel = i.ToColumn("Balance Chart Label"),
     FileName = i.ToSourceName()
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 
 var classificationTypeStream = ProcessContextStream
     .Select($"{TaskName}: Create RBC Accounting chart classification type", ctx => new MovementClassificationType { Code = "RbcAccountingChart", Name = new MultiCultureString { ["en"] = "Accounting chart RBC",["fr"] = "Tableau comptable RBC" } })

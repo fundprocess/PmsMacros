@@ -1,3 +1,5 @@
+//Banque de Luxembourg
+
 #region Setup file definition
 class BdlCustidNode
 {
@@ -575,9 +577,8 @@ var MIFIDCLASSAssignations = filePortfoliosStream
 #endregion
 
 #region TARGET SECURITIES
-
 var issuerSicavsStream = fileTargetSecuritiesStream
-    .Where($"Filter non Share Classes for SICAV", i=>IsShareClassInstrType(i.InstrType.Value))
+    .Where($"{TaskName}: Filter non Share Classes for SICAV", i=>IsShareClassInstrType(i.InstrType.Value))
     .Distinct($"{TaskName}: distinct SecBase SICAV", i => GetSicavName(i.Issuer,i.SecName))
     .LookupCountry($"{TaskName}: get Sicav related country", l => l.IssueDomic, 
         (l,r) => new {FileRow = l, Country=r })
@@ -597,10 +598,10 @@ var issuerSicavsStream = fileTargetSecuritiesStream
 
 var issuerSicavsStreamFixIssuer = issuerSicavsStream
     .Fix($"{TaskName}: IssuerId ", i => i.FixProperty(i => i.IssuerId).AlwaysWith(i => i.Id))
-    .EfCoreSave("Fixing Sicav issuer Id");
+    .EfCoreSave($"{TaskName}: Fixing Sicav issuer Id");
 
 var issuerCompaniesStream = fileTargetSecuritiesStream
-    .Where($"Filter Share Classes", i=> !IsShareClassInstrType(i.InstrType.Value))
+    .Where($"{TaskName}: Filter Share Classes", i=> !IsShareClassInstrType(i.InstrType.Value))
     .Distinct($"{TaskName}: distinct SecBase Issuers Companies", i => GetIssuerInternalCode(i.Issuer,i.SecName,i.InstrType.Value))    
     .LookupCountry($"{TaskName}: get issuer related companies country", l => l.IssueDomic, (l,r) => new {FileRow = l, Country=r })
     .LookupCurrency($"{TaskName}: get related company currency", i => i.FileRow.InstrCcy , 
@@ -617,7 +618,7 @@ var issuerCompaniesStream = fileTargetSecuritiesStream
     .EfCoreSave($"{TaskName}: save target issuer companies", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
 var targetSubFundsStream = fileTargetSecuritiesStream
-    .Where($"Filter Share Class for Sub fund",i=>IsShareClassInstrType(i.InstrType.Value))
+    .Where($"{TaskName}: Filter Share Class for Sub fund",i=>IsShareClassInstrType(i.InstrType.Value))
     .Distinct($"{TaskName}: distinct SecBase Sub-Funds", i => GetSubFundName(i.Issuer,i.SecName))
     .Lookup($"{TaskName}: get related sub-fund Sicav", issuerSicavsStream, 
         i => GetSicavName(i.Issuer,i.SecName), i => i.InternalCode,

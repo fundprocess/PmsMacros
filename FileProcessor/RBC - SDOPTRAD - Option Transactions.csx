@@ -15,7 +15,7 @@ var rbcTransactionFileDefinition = FlatFileDefinition.Create(i => new
     OptionRbcdisCode = i.ToColumn("Option RBCDIS Code"),
     ValueDate = i.ToDateColumn("Value Date", "yyyyMMdd"),
     FileName = i.ToSourceName()
-}).IsColumnSeparated(',');
+}).IsColumnSeparated(';');
 
 var transFileStream = FileStream
     .CrossApplyTextFile($"{TaskName}: Parse transaction file", rbcTransactionFileDefinition)
