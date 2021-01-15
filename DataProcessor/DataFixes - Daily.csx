@@ -1,51 +1,19 @@
-#region Fix investor advisors
-var primaryAdvisor = ProcessContextStream.EfCoreSelect($"{TaskName}: get primary advisor from db", (ctx, j) => 
-                        ctx.Set<RoleRelationship>().Include(i=>i.Entity).Include(i=>i.Role)
-                        .Where(i=>i.Entity.InternalCode == "bpeeters" && 
-                            i.Role.Domain == RoleDomain.ClientAdvisor)).EnsureSingle($"Ensure primary client advisor");
-var fixPrimaryAdvisor = ProcessContextStream
-        .EfCoreSelect($"{TaskName}: get investor from db", 
-                        (ctx, j) => ctx.Set<InvestorRelationship>().Where(i=> !i.PrimaryInternalAdvisorId.HasValue))
-        .Select($"{TaskName}: link primaryAdvisor", primaryAdvisor, (investor,advisor)=>{
-                investor.PrimaryInternalAdvisorId = advisor!=null? advisor.Id :throw new Exception("primary advisor null");
-                return investor;
-        })
-        .EfCoreSave($"{TaskName}: save primary advisor");
+#region Cash Issuer
+var cashSecuritiesWithNoIssuer = ProcessContextStream.EfCoreSelect($"{TaskName}: get cash securities", (ctx, j) => 
+                        ctx.Set<Cash>().Where(i => !i.IssuerId.HasValue));
 
-var secondaryAdvisor = ProcessContextStream.EfCoreSelect($"{TaskName}: get secondary advisor from db", (ctx, j) => 
-                        ctx.Set<RoleRelationship>().Include(i=>i.Entity).Include(i=>i.Role)
-                        .Where(i=>i.Entity.InternalCode == "tvanvaerenbergh"
-                        && i.Role.Domain == RoleDomain.ClientAdvisor)).EnsureSingle($"Ensure secondary client advisor");
+var bbh = ProcessContextStream.EfCoreSelect($"{TaskName}: get issuer entity", (ctx, j) => 
+                        ctx.Set<Company>().Where(i => i.InternalCode == "bbh"))
+                        .EnsureSingle($"Ensure one");
 
-var fixSecondaryAdvisor = ProcessContextStream
-        .EfCoreSelect($"{TaskName}: get investor 2 from db", 
-                (ctx, j) => ctx.Set<InvestorRelationship>().Where(i=> !i.SecondaryInternalAdvisorId.HasValue))
-        .Select($"{TaskName}: link secondary Advisor", secondaryAdvisor, (investor,advisor)=>{
-                investor.SecondaryInternalAdvisorId =  advisor!=null? advisor.Id :throw new Exception("advisor null");
-                return investor;
-        })
-        .EfCoreSave($"{TaskName}: save secondary advisor");
-
+var saveCashIssuers = cashSecuritiesWithNoIssuer.Select($"{TaskName}: set issuer",bbh, (i,bbh) => {
+         i.IssuerId = (bbh != null)? bbh.Id : throw new Exception("Cash issuer not found");
+         return i;
+     })
+     .EfCoreSave($"{TaskName}: save cash");
 #endregion
 
-#region fix investor intermediaries
-var intermediary = ProcessContextStream.EfCoreSelect($"{TaskName}: get intermediary relationship", (ctx, j) => 
-                        ctx.Set<RoleRelationship>().Include(i=>i.Entity).Include(i=>i.Role)
-                        .Where(i=>i.Entity.InternalCode == "ShelterIM"
-                        && i.Role.Code == "Distributor")).EnsureSingle($"Ensure Intermediary");
-
-var fixIntermediary = ProcessContextStream
-        .EfCoreSelect($"{TaskName}: get intermediary from db", 
-                (ctx, j) => ctx.Set<InvestorRelationship>().Where(i=> !i.IntermediaryId.HasValue))
-        .Select($"{TaskName}: link intermediary", intermediary, (investor,intermediary)=>{
-                investor.IntermediaryId = intermediary.Id;
-                return investor;
-        })
-        .EfCoreSave($"{TaskName}: save intermediary");
-#endregion
-
-return ProcessContextStream.WaitWhenDone("Wait done",fixPrimaryAdvisor,fixSecondaryAdvisor,fixIntermediary);
-
+return ProcessContextStream.WaitWhenDone("Wait done",saveCashIssuers);
 
 
 #region Fix primary shareclass
@@ -54,8 +22,8 @@ return ProcessContextStream.WaitWhenDone("Wait done",fixPrimaryAdvisor,fixSecond
 //             i => new {i.ShareClass.SubFundId.Value,i.TotalNetAsset}, new {FundCode = 1,TotalNetAsset = -2})
 //         .Distinct($"{TaskName}: Distinct AUM sorted share classes", i => i.ShareClass.SubFundId); //take the shareclass id that comes first at it has the biggest aum for the subfund
 
-// var subFundsStreamDb = ProcessContextStream.EfCoreSelect($"{TaskName}: get subFundsStreamDb", (ctx, j) => 
-//     ctx.Set<SubFund>());
+// var subFundsStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get sub funds Stream", (ctx, j) => 
+//     ctx.Set<SubFund>().Include(i => i.Sicav).Where(i=>i.Sicav.IssuerId == j.TenantId));
 
 // var subfundsPrimaryShareClassStream = subfundsStream
 //     .Lookup($"{TaskName}: get related primary share class", primaryShareClassStream, i => i.Id, i => i.ShareClass.SubFundId.Value,
@@ -82,59 +50,78 @@ return ProcessContextStream.WaitWhenDone("Wait done",fixPrimaryAdvisor,fixSecond
 #endregion Fix primary shareclass
 
 
+#region complete role when missing:  investor advisors (primary & secondary) and intermediary
+// string primaryAdvisorCode="";
+// string secondaryAdvisorCode="";
+// string intermediaryCode="";
+// var primaryAdvisor = ProcessContextStream.EfCoreSelect($"{TaskName}: get primary advisor from db", (ctx, j) => 
+//                         ctx.Set<RoleRelationship>().Include(i=>i.Entity).Include(i=>i.Role)
+//                         .Where(i=>i.Entity.InternalCode == primaryAdvisorCode && 
+//                             i.Role.Domain == RoleDomain.ClientAdvisor)).EnsureSingle($"Ensure primary client advisor");
+// var fixPrimaryAdvisor = ProcessContextStream
+//         .EfCoreSelect($"{TaskName}: get investor from db", 
+//                         (ctx, j) => ctx.Set<InvestorRelationship>().Where(i=> !i.PrimaryInternalAdvisorId.HasValue))
+//         .Select($"{TaskName}: link primaryAdvisor", primaryAdvisor, (investor,advisor)=>{
+//                 investor.PrimaryInternalAdvisorId = advisor!=null? advisor.Id :throw new Exception("primary advisor null");
+//                 return investor;
+//         })
+//         .EfCoreSave($"{TaskName}: save primary advisor");
+
+// var secondaryAdvisor = ProcessContextStream.EfCoreSelect($"{TaskName}: get secondary advisor from db", (ctx, j) => 
+//                         ctx.Set<RoleRelationship>().Include(i=>i.Entity).Include(i=>i.Role)
+//                         .Where(i=>i.Entity.InternalCode == secondaryAdvisorCode
+//                         && i.Role.Domain == RoleDomain.ClientAdvisor)).EnsureSingle($"Ensure secondary client advisor");
+
+// var fixSecondaryAdvisor = ProcessContextStream
+//         .EfCoreSelect($"{TaskName}: get investor 2 from db", 
+//                 (ctx, j) => ctx.Set<InvestorRelationship>().Where(i=> !i.SecondaryInternalAdvisorId.HasValue))
+//         .Select($"{TaskName}: link secondary Advisor", secondaryAdvisor, (investor,advisor)=>{
+//                 investor.SecondaryInternalAdvisorId =  advisor!=null? advisor.Id :throw new Exception("advisor null");
+//                 return investor;
+//         })
+//         .EfCoreSave($"{TaskName}: save secondary advisor");
+// var intermediary = ProcessContextStream.EfCoreSelect($"{TaskName}: get intermediary relationship", (ctx, j) => 
+//                         ctx.Set<RoleRelationship>().Include(i=>i.Entity).Include(i=>i.Role)
+//                         .Where(i=>i.Entity.InternalCode == intermediaryCode
+//                         && i.Role.Code == "Distributor")).EnsureSingle($"Ensure Intermediary");
+
+// var fixIntermediary = ProcessContextStream
+//         .EfCoreSelect($"{TaskName}: get intermediary from db", 
+//                 (ctx, j) => ctx.Set<InvestorRelationship>().Where(i=> !i.IntermediaryId.HasValue))
+//         .Select($"{TaskName}: link intermediary", intermediary, (investor,intermediary)=>{
+//                 investor.IntermediaryId = intermediary.Id;
+//                 return investor;
+//         })
+//         .EfCoreSave($"{TaskName}: save intermediary");
+
+//return ProcessContextStream.WaitWhenDone("Wait done",fixPrimaryAdvisor,fixSecondaryAdvisor,fixIntermediary);
+
+#endregion
 
 
 
+#region Fix Statistics set to compute
+// var subFundsStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get sub funds Stream", (ctx, j) => 
+//         ctx.Set<SubFund>().Include(i => i.Sicav).Where(i=>i.Sicav.IssuerId == j.TenantId));
+
+// var statisticsSet = ProcessContextStream.EfCoreSelect($"{TaskName}: get statistics set", (ctx, j) => 
+//         ctx.Set<StatisticDefinitionSet>().Where(i => i.Code == "DailyStatistics"))
+//         .EnsureSingle($"{TaskName}: ensure single daily statistics set");
+
+// var savePortfolioStatisticsSet = subFundsStream
+//         .Select($"{TaskName} create PortfolioStatisticDefinitionSet",statisticsSet, (i,j) =>
+//         new PortfolioStatisticDefinitionSet{
+//                 PortfolioId = i.Id,
+//                 StatisticDefinitionSetId = j.Id,
+//         })
+//         .EfCoreSave($"{TaskName}: Save PortfolioStatisticDefinitionSet", o => o
+//         .SeekOn(i => new {i.PortfolioId, i.StatisticDefinitionSetId}).DoNotUpdateIfExists());
+
+// return ProcessContextStream.WaitWhenDone("Wait done", savePortfolioStatisticsSet);
+
+#endregion Fix Statistics set to compute
 
 
-// #region Fix discretionary portfolios managers
-
-// var discretionaryPortfoliosStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get portfolios from db", 
-//                         (ctx, j) => ctx.Set<DiscretionaryPortfolio>());
-
-// var sicavStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get sicavs from db", 
-//                         (ctx, j) => ctx.Set<Sicav>().Where(i=>i.IssuerId==j.TenantId));
-// var tvPrimary = ProcessContextStream.EfCoreSelect($"{TaskName}: get TV Role Relationship from db", (ctx, j) => 
-//                         ctx.Set<RoleRelationship>().Where(i=>i.Entity.InternalCode == "tvanvaerenbergh" && 
-//                             i.Role.Domain == RoleDomain.InvestmentManagement))
-//                             .EnsureSingle($"Ensure tvPrimary");
-
-// var ldSecondary = ProcessContextStream.EfCoreSelect($"{TaskName}: get LD Role Relationship from db", (ctx, j) => 
-//                         ctx.Set<RoleRelationship>().Where(i=>i.Entity.InternalCode == "ldellal"
-//                         && i.Role.Domain == RoleDomain.InvestmentSecondaryManagement))
-//                         .EnsureSingle($"Ensure only one secondary LD");
-
-// // var tvSecondary = ProcessContextStream.EfCoreSelect($"{TaskName}: get TV secondary Role Relationship from db", (ctx, j) => 
-// //                         ctx.Set<RoleRelationship>().Where(i=>i.Entity.InternalCode == "tvanvaerenbergh" && 
-// //                             i.Role.Domain == RoleDomain.InvestmentSecondaryManagement))
-// //                             .EnsureSingle($"Ensure only one secondary TV");
-
-// // var ldPrimary = ProcessContextStream.EfCoreSelect($"{TaskName}: get LD primary Role Relationship from db", (ctx, j) => 
-// //                         ctx.Set<RoleRelationship>().Where(i=>i.Entity.InternalCode == "ldellal"
-// //                         && i.Role.Domain == RoleDomain.InvestmentManagement))
-// //                         .EnsureSingle($"Ensure only one primary LD");
-
-// var primaryMgrStream = discretionaryPortfoliosStream    
-//     .Select($"{TaskName}: create link TV Relationship Portfolio", tvPrimary,(i,j) => new RelationshipPortfolio()
-//     {
-//         PortfolioId = i.Id,
-//         RelationshipId = j.Id,
-//     })
-//     .EfCoreSave($"{TaskName}: save TV primary", o => o.SeekOn(i => new {i.PortfolioId , (i.Relationship as RoleRelationship).Role.Domain}).DoNotUpdateIfExists());
-// var secondaryMgrStream = discretionaryPortfoliosStream
-//     .Where($"{TaskName}: all except LU8727 and LU8730 again",i=> !(new string[]{"LU8727","LU8730"}).Contains(i.InternalCode) )
-//     .Select($"{TaskName}: create link LD Relationship Portfolio", ldSecondary,(i,j) => new RelationshipPortfolio()
-//     {
-//         PortfolioId = i.Id,
-//         RelationshipId = j.Id,
-//     })
-//     .EfCoreSave($"{TaskName}: save ld secondary", 
-//         o => o.SeekOn(i => new {i.PortfolioId , (i.Relationship as RoleRelationship).Role.Domain}).DoNotUpdateIfExists());
-
-// #endregion portfolio managers
-
-
-// return ProcessContextStream.WaitWhenDone("Wait done",primaryMgrStream,secondaryMgrStream);
 
 
 // //ADD A BLOOMBERG CODE
@@ -142,7 +129,7 @@ return ProcessContextStream.WaitWhenDone("Wait done",fixPrimaryAdvisor,fixSecond
                 //i => i.Set<ShareClass>().Where(sc=>sc.InternalCode == "7754T1"));
 // var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i => new SecurityDataProviderCode
 //     {
-//         Code = "UIUIVEU.LX",
+//         Code = "***.LX",
 //         DataProvider = "Bloomberg",
 //         SecurityId = i.Id,
 //     })

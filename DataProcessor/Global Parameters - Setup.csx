@@ -20,7 +20,7 @@ var fixGp = generalParameters
 //RISK MANAGEMENT PARAMETERS
 var riskMgmtClassificationType = ProcessContextStream 
     .EfCoreSelect($"{TaskName}: get riskMgmtClassificationType", (ctx, j) => 
-        ctx.Set<SecurityClassificationType>().Where(c => c.Code == "EquitySector"))
+        ctx.Set<ClassificationType>().Where(c => c.Code == "GICS"))
     .EnsureSingle($"{TaskName}: ensures only one riskMgmtClassificationType");
 
 var generalParameters2 = ProcessContextStream.EfCoreSelect($"{TaskName}: get gp2", (ctx, j) => ctx.Set<Parameters>());
@@ -33,6 +33,5 @@ var fixGp2 = generalParameters
                 return p;
         })
         .EfCoreSave($"{TaskName}: save updated parameters2");
-
 
 ProcessContextStream.WaitWhenDone("wait till everything is done", fixGp,fixGp2)

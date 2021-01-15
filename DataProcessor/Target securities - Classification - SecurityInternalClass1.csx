@@ -28,10 +28,10 @@ var classificationTypeStream = ProcessContextStream
     .EfCoreSave($"{TaskName}: Save classification type", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure classification type is single");
 
-// Create SecurityClassification
+// Create Classification
 var classificationStream = ProcessContextStream
     .CrossApplyEnumerable($"{TaskName}: Cross apply input", i=> classifications)
-    .Select($"{TaskName}: Get related classification type", classificationTypeStream, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related classification type", classificationTypeStream, (i, ct) => new Classification
     {
         Code = i,
         Name = new MultiCultureString { ["en"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.ToLower()) },
@@ -50,7 +50,7 @@ var classificationsOfSecurity = ProcessContextStream.EfCoreSelect("Get every sec
         ClassificationTypeId = t.Id
     })
     .EfCoreLookup("Get related classification Id", o => o
-        .Set<SecurityClassification>()
+        .Set<Classification>()
         .On(i => i.ClassificationCode, sc => sc.Code)
         .Select((l, r) => new ClassificationOfSecurity
         {

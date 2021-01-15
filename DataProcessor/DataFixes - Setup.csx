@@ -1,10 +1,86 @@
+//Create Pricing Policy 
+var portfoliosStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get Portfolio", (ctx, j) => ctx.Set<Portfolio>()
+                                 .Where(i=>i.InternalCode == "775400-UI"));
+
+var fxPricingPolicyStream = portfoliosStream
+        .Select($"{TaskName} Create Pricing Policy", i=> new FxRatePricingPolicy{
+            Code = "UI-FxRates",
+            Name = "UI-FxRates",
+            PricingRelativeDay = -1,
+            PricingTime = new DateTime(2000,01,01,16,00,00),
+            DataProviderCode = "Bloomberg",
+        })
+        .EfCoreSave($"{TaskName}: save fxPricingPolicyStream", o => o.SeekOn(i => i.Code));
+        
+var fxPricingPolicySingle = fxPricingPolicyStream.EnsureSingle($"{TaskName} ensure Pricing Policy single");
+
+var portfolioPricingPolicyStream = portfoliosStream
+    .Select($"{TaskName} Create PortfolioPricingPolicy",fxPricingPolicySingle, (port,policy) => new PortfolioPricingPolicy{
+            PricingPolicyId =  policy.Id,
+            PortfolioId =  port.Id,
+        })
+        .EfCoreSave($"{TaskName}: save PortfolioPricingPolicy", o => o.SeekOn(i => new {i.PricingPolicyId,i.PortfolioId}));
+
+//Change Security Currency + EOD code
+var GBx = ProcessContextStream.EfCoreSelect($"{TaskName}: get GBx", (ctx, j) => ctx.Set<Currency>()
+                                 .Where(i=>i.IsoCode == "GBx")).EnsureSingle($"{TaskName}: ensure one GBx");
+
+var intertekSecurity = ProcessContextStream.EfCoreSelect($"{TaskName} get security", (ctx,j) => ctx.Set<Security>()
+        .Where(s => s.InternalCode == "GB0031638363"));
+
+var secStream = intertekSecurity.Select($"{TaskName}: Update security",GBx, (sec,GBx) =>{
+            sec.CurrencyId = GBx.Id;
+            return sec;
+        } ).EfCoreSave($"{TaskName}: save security",o=>o.WithMode(SaveMode.EntityFrameworkCore) );
+
+var saveIntertekEodCode = intertekSecurity.Select($"{TaskName}: create EodCodeSelect", i => new SecurityDataProviderCode
+{
+    Code = "ITRK.LSE",
+    DataProvider = "EOD",
+    SecurityId = i.Id,
+})
+.EfCoreSave($"{TaskName}: save eod code ", o => o.SeekOn(i => new { i.Code, i.SecurityId, i.DataProvider }));
+
+var hoyaSecurity = ProcessContextStream.EfCoreSelect($"{TaskName} get hoya Security", (ctx,j) => ctx.Set<Security>()
+        .Where(s => s.InternalCode == "JP3837800006"))
+        .Select($"{TaskName}: create hoya EodCodeSelect", i => new SecurityDataProviderCode
+        {
+            Code = "7741.TSE",
+            DataProvider = "EOD",
+            SecurityId = i.Id,
+        })
+        .EfCoreSave($"{TaskName}: save hoya eod code ", o => o.SeekOn(i => new { i.Code, i.SecurityId, i.DataProvider }));
+
+var rioTinto = ProcessContextStream.EfCoreSelect($"{TaskName} get rioTinto Security", (ctx,j) => ctx.Set<Security>()
+        .Where(s => s.InternalCode == "GB0007188757"))
+        .Select($"{TaskName}: create rioTinto EodCodeSelect", i => new SecurityDataProviderCode
+        {
+            Code = "RIO.LSE",
+            DataProvider = "EOD",
+            SecurityId = i.Id,
+        })
+        .EfCoreSave($"{TaskName}: save rioTinto eod code ", o => o.SeekOn(i => new { i.Code, i.SecurityId, i.DataProvider }));
 
 
+var newmont = ProcessContextStream.EfCoreSelect($"{TaskName} get newmont Security", (ctx,j) => ctx.Set<Security>()
+        .Where(s => s.InternalCode == "US6516391066"))
+        .Select($"{TaskName}: create newmont EodCodeSelect", i => new SecurityDataProviderCode
+        {
+            Code = "NEM.US",
+            DataProvider = "EOD",
+            SecurityId = i.Id,
+        })
+        .EfCoreSave($"{TaskName}: save newmont eod code ", o => o.SeekOn(i => new { i.Code, i.SecurityId, i.DataProvider }));
+
+//CA01626P4033 - ATD.TO - CAD
+
+return ProcessContextStream.WaitWhenDone($"{TaskName} return", secStream,
+        saveIntertekEodCode,hoyaSecurity,portfolioPricingPolicyStream);
 
 
-
-
-// // //ADD A BLOOMBERG CODE
+//---------------------------------------------------
+//---------------------------------------------------
+// //ADD A BLOOMBERG CODE
 // var shareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: shareClassStream", (ctx, j) => ctx.Set<ShareClass>().Where(sc => sc.InternalCode == "7754T1"));
 // var saveBbgCode = shareClassStream.Select($"{TaskName}: saveBbgCodeSelect", i => new SecurityDataProviderCode
 // {
@@ -13,8 +89,6 @@
 //     SecurityId = i.Id,
 // })
 //     .EfCoreSave($"{TaskName}: saveBbgCodeSave", o => o.SeekOn(i => new { i.Code, i.SecurityId, i.DataProvider }));
-
-
 
 //ADD NAV MANUALLY
 // var shareClassStream = ProcessContextStream.EfCoreSelect($"{TaskName}: shareClassStream", (ctx,j) => ctx.Set<ShareClass>().Where(sc=>sc.InternalCode == "7754T1"));
@@ -92,6 +166,3 @@
 // var deletedSicav = ProcessContextStream.WaitWhenDone($"{TaskName}: wait for portfolio deletion", deletedPortfolio)
 //             .EfCoreDelete("Delete SICAV",(ProcessContext pc,Sicav s) => s.InternalCode == "UI I - ValuFocus");
 // return ProcessContextStream.WaitWhenDone("Wait for SICAV deletion",deletedSicav);
-
-
-

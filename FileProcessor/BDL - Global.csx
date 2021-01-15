@@ -548,7 +548,7 @@ var MIFIDCLASSType = ProcessContextStream
 // 2. MIFIDCLASS: Investor Classification definition
 var MIFIDCLASSClassificationStream = filePortfoliosStream
     .Distinct($"{TaskName}: Distinct MIFIDCLASS", i => i.InitMifid)
-    .Select($"{TaskName}: Create MIFIDCLASS classification", MIFIDCLASSType, (i, t) => new InvestorClassification
+    .Select($"{TaskName}: Create MIFIDCLASS classification", MIFIDCLASSType, (i, t) => new Classification
     {
         Code = i.InitMifid,
         Name = new MultiCultureString { ["en"] = i.InitMifid },
@@ -709,7 +709,7 @@ var classificationStream = fileTargetSecuritiesStream
                 Type= l.Type.ClassificationType,
                 KeyVal = r
     })
-    .Select($"{TaskName}: Create BDL Classifications", i=> new SecurityClassification
+    .Select($"{TaskName}: Create BDL Classifications", i=> new Classification
     {
         ClassificationTypeId = i.Type.Id,
         Code = i.ClassificationCode,
@@ -928,7 +928,7 @@ var orderTypClassificationStream = fileCashMovStream
     .Distinct($"{TaskName}: Distinct ORDTYP", i => i.OrdTypId)
 	.Lookup($"{TaskName}: Lookup ORDTYP related description in BDL dictionary", ordTypFileTableStream, 
             i=> new{ KeyVal = i.OrdTypId},i=>new{KeyVal = i.KeyVal }, (l,r)=> new { FileRow=l, TableNode = r})
-    .Select($"{TaskName}: Create ORDTYP movement classification", orderTypType, (i, t) => new MovementClassification
+    .Select($"{TaskName}: Create ORDTYP movement classification", orderTypType, (i, t) => new Classification
     {
         Code = i.FileRow.OrdTypId,
         Name = new MultiCultureString { ["en"] = (i.TableNode !=null)? i.TableNode.Descr : i.FileRow.OrdTypId},
@@ -1107,16 +1107,6 @@ Security CreateTargetSecurity(BdlSecBaseNode fileRow, Currency currency, Country
 string GetPortfolioInternalCode(string ContId)
     => ContId + "-BDL";
 
-string GetMovementCode(string ContId, string OrderNr, string OrdTypId, double? NetAmount, DateTime bookDate)
-    => ContId + "-" + OrderNr+ "-"
-        + (string.IsNullOrEmpty(OrdTypId)? "" : OrdTypId)
-        + ( NetAmount.HasValue? NetAmount+ "-" : "" )
-        + bookDate.ToString("yyyy-MM-dd") 
-        + "-BDL";
-
-string getTransactionCode(string ContId, string OrderNr)
-    => ContId + "-" + OrderNr   + "-BDL";
-
 AccountType? GetCashAccountType(int cashType)
 {
      switch (cashType)
@@ -1159,24 +1149,36 @@ string GetIssuerInternalCode(string issuerStr,string secName,int instrType)
 string GetSecurityInternalCode(string isin, string securityCode)
     => (!string.IsNullOrEmpty(isin)) ? isin : securityCode;
 
+string GetMovementCode(string ContId, string OrderNr, string OrdTypId, double? NetAmount, DateTime bookDate)
+    => ContId + "-" + OrderNr+ "-"
+        + (string.IsNullOrEmpty(OrdTypId)? "" : OrdTypId)
+        + ( NetAmount.HasValue? NetAmount+ "-" : "" )
+        + bookDate.ToString("yyyy-MM-dd") 
+        + "-BDL";
+
+string getTransactionCode(string ContId, string OrderNr, string securityCode="")
+    => ContId + "-" + OrderNr + ( !string.IsNullOrEmpty(securityCode)? "-"+securityCode:"")   + "-BDL";
+
 SecurityTransaction CreateSecurityTransaction(BdlSectransNode FileRow,Portfolio Portfolio, Security Security1, Security Security2)
     => new SecurityTransaction
     {
     PortfolioId = Portfolio!=null? Portfolio.Id : throw new Exception("Saving Security Transaction - portfolio not found: "+FileRow.ContId+"-BDL"),
     SecurityId = (Security1!=null)? Security1.Id: ((Security2!=null)?
                     Security2.Id:throw new Exception($"Security not found {FileRow.SecurityCode}")),
-    OperationType = FileRow.GrossAmount.Value <=0? OperationType.Buy: OperationType.Sale,
-    TransactionCode = getTransactionCode(FileRow.ContId, FileRow.OrderNr),
-    Description = FileRow.Communication1,
+    TransactionCode = getTransactionCode(FileRow.ContId, FileRow.OrderNr,FileRow.SecurityCode),
+    Description = !string.IsNullOrEmpty(FileRow.Communication1)? FileRow.Communication1 : "N/A",
     TradeDate = FileRow.OrderDate,
     NavDate = FileRow.ExecDate,
     ValueDate = FileRow.ValDate,
     Quantity = Math.Abs(FileRow.SecQty),
-    GrossAmountInSecurityCcy = Math.Abs(FileRow.GrossAmount.Value),
-    GrossAmountInPortfolioCcy = (Math.Abs(FileRow.GrossAmount.Value) / (FileRow.Xrate.HasValue?FileRow.Xrate.Value:1.0)),
-    NetAmountInPortfolioCcy = Math.Abs(FileRow.NetAmount.Value),
-    NetAmountInSecurityCcy = (Math.Abs(FileRow.NetAmount.Value) * (FileRow.Xrate.HasValue?FileRow.Xrate.Value:1.0)),
-    FeesInSecurityCcy = FileRow.BankFee.HasValue?FileRow.BankFee.Value:(double?)null,
+    GrossAmountInSecurityCcy = FileRow.GrossAmount != null? Math.Abs(FileRow.GrossAmount.Value): 0,
+    GrossAmountInPortfolioCcy = FileRow.GrossAmount != null?
+                                (Math.Abs(FileRow.GrossAmount.Value) / (FileRow.Xrate.HasValue? FileRow.Xrate.Value:1.0)):0,
+    NetAmountInPortfolioCcy = FileRow.NetAmount != null?  Math.Abs(FileRow.NetAmount.Value): (double?) null,
+    NetAmountInSecurityCcy = FileRow.NetAmount != null? (Math.Abs(FileRow.NetAmount.Value) * (FileRow.Xrate.HasValue?FileRow.Xrate.Value:1.0))
+                            :(double?) null,
+    OperationType = FileRow.SecQty >=0? OperationType.Buy: OperationType.Sale,
+    FeesInSecurityCcy = FileRow.BankFee.HasValue? FileRow.BankFee.Value : (double?)null,
     PriceInSecurityCcy = FileRow.ExecPrice,        
     TransactionType = TransactionType.SecurityMovement,
     DecisionType = TransactionDecisionType.Discretionary,

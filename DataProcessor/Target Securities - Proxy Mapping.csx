@@ -1,3 +1,19 @@
+
+var deleteAllProxies =  ProcessContextStream.EfCoreDelete($"{TaskName} Delete all proxies to be updated", o => 
+    o.Set<ProxyPosition>().Where((ctx,c) => c.Id>=0)); 
+
+
+var savedProxies = ProcessContextStream
+    .WaitWhenDone($"{TaskName}: wait for current proxy deletion", deleteAllProxies)
+    .EfCoreSelect("Get securities with no proxy", (ctx, j) => 
+        ctx.Set<SecurityInstrument>().Include(i=> i.ProxyPositions)
+        .Where(security=>!security.ProxyPositions.Any()))
+    .CrossApplySecurityProxyIndexPositions("Compute security proxies", i => i.Id, GetRule)
+    .EfCoreSave("Save proxies", o=>o.SeekOn(i=>new {i.SecurityInstrumentId, i.IndexId}));
+
+return ProcessContextStream.WaitWhenDone("wait till everything is done", savedProxies);
+
+
 IProxyMappingResult GetRule(Security security, ProxyMappingResultProvider resultProvider)
 {
     return resultProvider.SimpleIndexMapping("MSCIWORLDNETUSD");
@@ -6,7 +22,8 @@ IProxyMappingResult GetRule(Security security, ProxyMappingResultProvider result
     //     case Equity:
     //     case ShareClass:
     //     case Etf:
-    //         return resultProvider.LinearRegressionIndexMapping("3LHE", "SP500BDT", "MSCIEF", "SX5E", "SPXNTR", "FCHI", "JPXNK400", "N300", "NDX", "EUU");
+    //         return resultProvider.LinearRegressionIndexMapping("MSCIWORLDNETUSD" , "3LHE"); 
+    //             //"MSCIEF", "SX5E", "SPXNTR", "FCHI", "JPXNK400", "EUU", "NDX");
     //     case Bond bond:
     //         if (string.Equals(bond.Country.Region["en"], "Europe", StringComparison.InvariantCultureIgnoreCase)) 
     //             return resultProvider.SimpleIndexMapping("3LHE", 0.8).AddIndexMapping("SP500BDT", 0.2);
@@ -35,13 +52,3 @@ IProxyMappingResult GetRule(Security security, ProxyMappingResultProvider result
     //         throw new NotImplementedException("mapping case not managed");
     // }    
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// this is the standard part that shouldn't be useful to be touched
-//
-var savedProxies = ProcessContextStream
-    .EfCoreSelect("Get securities with no proxy", (ctx, j) => ctx.Set<SecurityInstrument>().Where(security=>!security.ProxyPositions.Any()))
-    .CrossApplySecurityProxyIndexPositions("Compute security proxies", i => i.Id, GetRule)
-    .EfCoreSave("Save proxies", o=>o.SeekOn(i=>new {i.SecurityInstrumentId, i.IndexId}));
-
-return ProcessContextStream.WaitWhenDone("wait till everything is done", savedProxies);

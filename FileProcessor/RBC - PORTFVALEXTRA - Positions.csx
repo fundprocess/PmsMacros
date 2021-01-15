@@ -177,16 +177,16 @@ var targetSecuritiesStream = targetSecuritiesFileStream
 #endregion
 
 #region Target Security Classifications
-// Create SecurityClassificationType
+// Create ClassificationType
 var classificationTypeStream = ProcessContextStream
     .Select($"{TaskName}: Create RBC classification type", ctx => new SecurityClassificationType { Code = "RBC Economic Sector", Name = new MultiCultureString { ["en"] = "RBC Economic Sector" } })
     .EfCoreSave($"{TaskName}: Save RBC classification type", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure RBC classification type is single");
 
-// Create SecurityClassification
+// Create Classification
 var classificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct classification", i => i.EconomicSectorLabel)
-    .Select($"{TaskName}: Get related classification type", classificationTypeStream, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related classification type", classificationTypeStream, (i, ct) => new Classification
     {
         Code = i.EconomicSectorLabel,
         Name = new MultiCultureString { ["en"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.EconomicSectorLabel.ToLower()) },

@@ -38,6 +38,7 @@ var securitiesStream = msciFileStream
     
 //Bloomberg Code
 var saveBbgCode = msciFileStream
+    .Where($"{TaskName} Filter empty bbg code", i=> !string.IsNullOrEmpty(i.BBGID))
     .Distinct($"{TaskName}: distinct positions security BBG Code", i => i.BBGID)
     .CorrelateToSingle($"{TaskName}: get related security bbg code", securitiesStream, 
         (l, r) => new { FileRow = l, Security = r })
@@ -65,8 +66,17 @@ var esgStream = msciFileStream
     .Distinct($"{TaskName}: Distinct security prices", i => new {i.SecurityId,i.Type,i.Date})
     .EfCoreSave($"{TaskName}: Save security prices", o => o.SeekOn(i => new {i.SecurityId,i.Type,i.Date}).DoNotUpdateIfExists());
 
-//Benchmark Compositions
+//Import Benchmark Compos
+var distinctMinBenchmarkComposStream = msciFileStream
+    .Distinct($"{TaskName} distinct FundCode-Date", i=> i.FundCode, o => o.ForProperty(i=> i.Date, DistinctAggregator.Min));
+
+var deleteNewerExistingBenchmarkCompoStream = distinctMinBenchmarkComposStream
+    .EfCoreDelete($"{TaskName} Existing newer compos", o => o
+        .Set<BenchmarkComposition>()
+        .Where((i,j) => j.Portfolio.InternalCode == i.FundCode && j.Date >= i.Date));
+
 var benchCompositionStream = msciFileStream
+    .WaitWhenDone($"{TaskName}: wait composition deletion", deleteNewerExistingBenchmarkCompoStream)
     .Distinct($"{TaskName}: distinct composition", i => new { i.FundCode, i.Date }, true)
     .EfCoreLookup($"{TaskName}: get related subfund", o => o
         .Set<SubFund>().On(i => i.FundCode, i => i.InternalCode)
@@ -94,11 +104,11 @@ var benchPositionsStream = msciFileStream
 //Assign GICS sector
 string classificationTypeCode = "GICS";
 var gicsType = ProcessContextStream.EfCoreSelect("Get gics classification type", (ctx,j) => ctx
-    .Set<SecurityClassificationType>().Where(ct => ct.Code == classificationTypeCode))
+    .Set<ClassificationType>().Where(ct => ct.Code == classificationTypeCode))
     .EnsureSingle($"Ensure only one gics type exists");
 
 var gicsClassificationsStream = ProcessContextStream.EfCoreSelect("Get gics classifications", (ctx,j) => ctx
-    .Set<SecurityClassification>().Include(i=>i.ClassificationType)
+    .Set<Classification>().Include(i=>i.ClassificationType)
     .Where(c => c.ClassificationType.Code == classificationTypeCode));
 
 var assignGics = msciFileStream
@@ -106,6 +116,7 @@ var assignGics = msciFileStream
         (l,r) => new {FileRow = l, Security = r} )
     .Lookup($"{TaskName} get related classification",gicsClassificationsStream, i => i.FileRow.GicsCode, i => i.Code,
         (l,r) => new {FileRow = l.FileRow, Security = l.Security, Classification = r})
+    .Where($"{TaskName} Gics not empty", i => i.Classification != null)
     .Select($"{TaskName} create classification",gicsType, (i,j) => new ClassificationOfSecurity
         {
             SecurityId = i.Security.Id,
@@ -118,7 +129,7 @@ var assignGics = msciFileStream
 var sicavsStream = ProcessContextStream.EfCoreSelect($"{TaskName} Get sicav stream", (ctx, j) => ctx.Set<Sicav>());
 var subFundsStream = ProcessContextStream.CrossApplyEnumerable($"{TaskName}: Cross-apply Sub Fund",ctx=>
     new [] {
-        new { InternalCode = "MSCI", Name = "MSCI", Currency="USD", SicavCode = "UI I"},
+        new { InternalCode = "MSCI-Estimated", Name = "MSCI-Estimated", Currency="USD", SicavCode = "UI I"},
     })
     .Lookup($"{TaskName} get related sicav", sicavsStream, i => i.SicavCode, i => i.InternalCode, 
         (l,r) => new {Row = l, Sicav = r})
@@ -135,7 +146,14 @@ var subFundsStream = ProcessContextStream.CrossApplyEnumerable($"{TaskName}: Cro
     .EfCoreSave($"{TaskName}: Save Sub Fund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: ensures only one sub fund");
 
+//Import Compos
+var deleteNewerExistingPortfolioCompoStream = distinctMinBenchmarkComposStream
+    .EfCoreDelete($"{TaskName} Existing newer compos 2", o => o
+        .Set<PortfolioComposition>()
+        .Where((i,j) => j.Portfolio.InternalCode == i.FundCode && j.Date >= i.Date));
+
 var portfolioCompositionStream = msciFileStream
+    .WaitWhenDone($"{TaskName}: wait newer portoflio compositions deletion", deleteNewerExistingPortfolioCompoStream)
     .Distinct($"{TaskName}: distinct composition - msci portfolio", i => new { i.FundCode, i.Date })
     .Select($"{TaskName}: create composition - msci portfolio",subFundsStream, (i,j) => new PortfolioComposition { 
         PortfolioId = j.Id, 

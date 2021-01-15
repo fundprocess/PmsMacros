@@ -27,6 +27,8 @@ var fileDefinition = FlatFileDefinition.Create(i => new
     Custodian = i.ToColumn("Custodian"),
     ManCo = i.ToColumn("ManCo"),
     FundAdmin = i.ToColumn("FundAdmin"),
+    StatisticsSetCode = i.ToColumn("StatisticsSetCode"),
+
 }).IsColumnSeparated(',');
 
 var subFundsFileStream = FileStream
@@ -166,18 +168,36 @@ var fundAdminsStream = subFundsFileStream
 
 #endregion
 
+#region StatisticsSet
+
+var statisticsSetsDbStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get statistics set", (ctx, j) => ctx.Set<StatisticDefinitionSet>());
+
+var savePortfolioStatisticsSet = subFundsFileStream
+        .CorrelateToSingle($"{TaskName} get related sub fund",updatedSubFundstream,
+            (l,r) => new {FileRow = l, SubFund = r})
+        .Lookup($"{TaskName} get related statistics sets",statisticsSetsDbStream,i => i.FileRow.StatisticsSetCode, i => i.Code,
+            (l,r) => new {FileRow = l.FileRow, SubFund = l.SubFund, StatisticsSet = r})
+        .Select($"{TaskName} create PortfolioStatisticDefinitionSet", (i,j) =>
+        new PortfolioStatisticDefinitionSet{
+                PortfolioId = i.SubFund.Id,
+                StatisticDefinitionSetId = i.StatisticsSet.Id,
+        })
+        .EfCoreSave($"{TaskName}: Save PortfolioStatisticDefinitionSet", o => o
+        .SeekOn(i => new {i.PortfolioId, i.StatisticDefinitionSetId}).DoNotUpdateIfExists());
+#endregion StatisticsSet
+
 #region FactsheetClassification
-// Create SecurityClassificationType
+// Create ClassificationType
 var classificationTypeStream = ProcessContextStream
     .Select($"{TaskName}: Create Factsheet classification type", 
         ctx => new SecurityClassificationType { Code = "FactsheetCustom1", Name = new MultiCultureString { ["en"] = "Factsheet Sub Fund Classification" } })
     .EfCoreSave($"{TaskName}: Save Factsheet classification type", o => o.SeekOn(ct => ct.Code))
     .EnsureSingle($"{TaskName}: Ensure Factsheet classification type is single");
 
-// Create SecurityClassification
+// Create Classification
 var classificationStream = subFundsFileStream
     .Distinct($"{TaskName}: Distinct classification", i => i.FactsheetClassification)
-    .Select($"{TaskName}: Get related classification type", classificationTypeStream, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related classification type", classificationTypeStream, (i, ct) => new Classification
     {
         Code = i.FactsheetClassification,
         Name = new MultiCultureString { ["en"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.FactsheetClassification.ToLower()) },

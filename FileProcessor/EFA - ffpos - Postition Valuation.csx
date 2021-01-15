@@ -67,16 +67,16 @@ var portfolioStream = posFileStream
     })
     .EfCoreSave($"{TaskName}: save sub fund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists());
 
-// SecurityClassificationType1
+// ClassificationType1
 var classificationType1Stream = ProcessContextStream
     .Select($"{TaskName}: Create EFA classification type 1", ctx => new SecurityClassificationType { Code = "EFA1", Name = new MultiCultureString { ["en"] = "EFA Classification 1" } })
     .EfCoreSave($"{TaskName}: Save EFA classification type 1", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure EFA classification type 1 is single");
 
-// SecurityClassification1
+// Classification1
 var classification1Stream = posFileStream
     .Distinct($"{TaskName}: Distinct classification 1", i => i.Category1)
-    .Select($"{TaskName}: Get related classification type 1", classificationType1Stream, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related classification type 1", classificationType1Stream, (i, ct) => new Classification
     {
         Code = i.Category1,
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.Category1.ToLower()) },
@@ -84,16 +84,16 @@ var classification1Stream = posFileStream
     })
     .EfCoreSave($"{TaskName}: Save EFA classification 1", o => o.SeekOn(ct => new { ct.ClassificationTypeId, ct.Code }).DoNotUpdateIfExists());
 
-// SecurityClassificationType2
+// ClassificationType2
 var classificationType2Stream = ProcessContextStream
     .Select($"{TaskName}: Create EFA classification type 2", ctx => new SecurityClassificationType { Code = "EFA2", Name = new MultiCultureString { ["en"] = "EFA Classification 2" } })
     .EfCoreSave($"{TaskName}: Save EFA classification type 2", o => o.SeekOn(ct => ct.Code).DoNotUpdateIfExists())
     .EnsureSingle($"{TaskName}: Ensure EFA classification type 2 is single");
 
-// SecurityClassification2
+// Classification2
 var classification2Stream = posFileStream
     .Distinct($"{TaskName}: Distinct classification 2", i => i.Category2)
-    .Select($"{TaskName}: Get related classification type 2", classificationType2Stream, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related classification type 2", classificationType2Stream, (i, ct) => new Classification
     {
         Code = i.Category2,
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.Category2.ToLower()) },
@@ -110,7 +110,7 @@ var ecoSectorClassificationTypeStream = ProcessContextStream
 // eco sector code Classification
 var ecoSectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct sector code classification", i => i.EcoSectCode)
-    .Select($"{TaskName}: Get related sector code classification type", ecoSectorClassificationTypeStream, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related sector code classification type", ecoSectorClassificationTypeStream, (i, ct) => new Classification
     {
         Code = i.EcoSectCode,
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.EcoSectCode.ToLower()) },

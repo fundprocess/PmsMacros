@@ -170,8 +170,8 @@ var savedShareClassHistoricalValueStream = navFileStream
     .EfCoreSave($"{TaskName}: Save share class hv", o => o.SeekOn(i => new { i.Date, i.SecurityId, i.Type }));
 #endregion
 
-return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", savedPortfolioHistoricalValueStream, 
-savedShareClassHistoricalValueStream,);
+return FileStream.WaitWhenDone($"{TaskName}: Wait till everything is saved", subfundsStream,shareClassStream, savedPortfolioHistoricalValueStream, 
+savedShareClassHistoricalValueStream);
 
 #region Helpers
 (string FundName, string SicavName) SplitFundName(string name)

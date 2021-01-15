@@ -51,7 +51,7 @@ var classificationRowStream = fileRowStream
 
 var classification1Stream = classificationRowStream
     .Distinct($"{TaskName}: Distinct classification 1", i => i.Level1Code)
-    .Select($"{TaskName}: Create classification 1", i => new MovementClassification
+    .Select($"{TaskName}: Create classification 1", i => new Classification
     {
         Code = i.Level1Code,
         Name = i.Level1Name,
@@ -63,7 +63,7 @@ var classification1Stream = classificationRowStream
 
 var classification2Stream = classificationRowStream
     .Distinct($"{TaskName}: Distinct classification 2", i => i.Level2Code)
-    .CorrelateToSingle($"{TaskName}: Get related classification 1", classification1Stream, (i,c) => new MovementClassification
+    .CorrelateToSingle($"{TaskName}: Get related classification 1", classification1Stream, (i,c) => new Classification
     {
         Code = i.Level2Code,
         Name = i.Level2Name,
@@ -76,7 +76,7 @@ var classification2Stream = classificationRowStream
 
 var classification3Stream = classificationRowStream
     .Distinct($"{TaskName}: Distinct classification 3", i => i.Level3Code)
-    .CorrelateToSingle($"{TaskName}: Get related classification 2", classification2Stream, (i,c) => new MovementClassification
+    .CorrelateToSingle($"{TaskName}: Get related classification 2", classification2Stream, (i,c) => new Classification
     {
         Code = i.Level3Code,
         Name = i.Level3Name,

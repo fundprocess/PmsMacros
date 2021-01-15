@@ -56,7 +56,7 @@ var discretionaryPortfolioTypeStream = ProcessContextStream
 
     // 2. Classification definition
 var discretionaryClassificationStream = discretionaryPortfolioTypeStream
-    .Select($"{TaskName}: DiscretionaryPortfolioClassification",i => new SecurityClassification
+    .Select($"{TaskName}: DiscretionaryPortfolioClassification",i => new Classification
     {
         Code = "DiscretionaryPortfolio",
         Name = new MultiCultureString { ["en"] = "Discretionary Portfolio",["en"] = "Portefeuille discretionnaire"},

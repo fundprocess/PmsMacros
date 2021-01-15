@@ -223,7 +223,7 @@ var equitySectorType = ProcessContextStream
 // 2.1 Classification definition: EquitySector
 var equitySectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct Equity sector", i => i.EquitySector.Trim())
-    .Select($"{TaskName}: Get related classification type", equitySectorType, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related classification type", equitySectorType, (i, ct) => new Classification
     {
         Code = i.EquitySector.Trim(),
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.EquitySector.Trim()) },
@@ -236,7 +236,7 @@ var equitySubSectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct Equity subsector", i => i.EquitySubSector.Trim())
     .CorrelateToSingle($"{TaskName}: lookup parent equity sector class", equitySectorClassificationStream,
                         (l, r) => new { FileRow = l, ParentClass = r })
-    .Select($"{TaskName}: Get related type", equitySectorType, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get related type", equitySectorType, (i, ct) => new Classification
     {
         ClassificationTypeId = ct.Id,
         Code = i.FileRow.EquitySubSector.Trim(),
@@ -267,7 +267,7 @@ var stoxxSectorType = ProcessContextStream
 // 2. Classification definition: StoxxSector
 var stoxxSectorClassificationStream = posFileStream
     .Distinct($"{TaskName}: Distinct stoxx sector", i => i.StoxxSector.Trim())
-    .Select($"{TaskName}: Get stoxx classification type", stoxxSectorType, (i, ct) => new SecurityClassification
+    .Select($"{TaskName}: Get stoxx classification type", stoxxSectorType, (i, ct) => new Classification
     {
         Code = i.StoxxSector.Trim(),
         Name = new MultiCultureString { ["en"] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(i.StoxxSector.Trim()) },
@@ -333,7 +333,7 @@ SecurityInstrument CreateSecurity(string securityCode, string secName, Company i
     {
         regularSecurity.PricingFrequency = FrequencyType.Daily;
         regularSecurity.CountryId = (country != null)? country.Id : (int?) null;
-        regularSecurity.IssuerId = (issuer != null)? issuer.Id : (int?) null;
+        regularSecurity.IssuerId = (issuer != null)? issuer.Id : throw new Exception("Issuer not found for: " + secName); 
     }
 
     return security;

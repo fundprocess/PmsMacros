@@ -1,5 +1,6 @@
 //var riskFreeIndexCodes = new Dictionary<string, string> { ["Euribor3M"] = "EUR", ["LiborUSD3M"] = "USD", ["LiborGBP3M"] ="GBP"};
-var riskFreeIndexCodes = new Dictionary<string, string> { ["Euribor3M"] = "EUR", ["US3M.GBOND"] = "USD"};
+//var riskFreeIndexCodes = new Dictionary<string, string> { ["Euribor3M"] = "EUR", ["US3M.GBOND"] = "USD"};
+var riskFreeIndexCodes = new Dictionary<string, string> { ["US3M.GBOND"] = "USD"};
 
 var ratesStream = ProcessContextStream.EfCoreSelect($"{TaskName} Get Rates", (ctx,j) => ctx
     .Set<IndexHistoricalValue>().Include(i => i.Index).Where(i=> riskFreeIndexCodes.Keys.Contains(i.Index.InternalCode)))
@@ -51,7 +52,7 @@ var savePrices = computePricesStream
         })
         .EfCoreSave($"{TaskName}: Save index cap prices ", o=>o.SeekOn(i => new {i.IndexId,i.Type,i.Date})); 
 
-ProcessContextStream.WaitWhenDone("wait till everything is done",computePricesStream,savePrices);
+ProcessContextStream.WaitWhenDone("wait till everything is done",savePrices);
 
 class NewPrice
 {
@@ -79,7 +80,7 @@ static List<NewPrice> ComputePrices(this List<IndexHistoricalValue> rates, strin
         currentPrice = currentPrice * (1 + Math.Pow((rate.Value / 100.0), nbDays) / 360.0); 
         currentDate = rate.Date;
     }
-
-    //var newPrice = lastPrice.Value * (1 + Math.Pow((rate.Value / 100.0), nbDays) / 360.0);
+    prices.Add(new NewPrice{IndexCode = newIndexCode, Date = currentDate, Price = currentPrice});
+    
     return prices;
 }
