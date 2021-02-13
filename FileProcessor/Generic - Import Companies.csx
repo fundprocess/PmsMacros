@@ -18,6 +18,7 @@ var fileDefinition = FlatFileDefinition.Create(i => new
     StreetAddress = i.ToColumn("StreetAddress"),
     ZipCode = i.ToColumn("ZipCode"),
     Location = i.ToColumn("Location"),
+    YearEnd = new DateOfYear(12,31)
 }).IsColumnSeparated(',').WithEncoding(System.Text.Encoding.GetEncoding(1252));
 
 var companyFileStream = FileStream

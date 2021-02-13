@@ -5,6 +5,7 @@ var fileDefinition = FlatFileDefinition.Create(i => new
     Date = i.ToDateColumn("Date", "yyyy-MM-dd"),
     Price = i.ToNumberColumn<double?>("Price", "."),
     AdjustedPrice = i.ToNumberColumn<double?>("AdjustedPrice", "."),
+    Volume = i.ToNumberColumn<double?>("Volume", "."),
 }).IsColumnSeparated(',');
 
 
@@ -24,6 +25,7 @@ var pricesStream = pricesFileStream
             {
                 new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.MKT, Value = i.FileRow.Price },
                 new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.TRP, Value = i.FileRow.AdjustedPrice },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.VOLU, Value = i.FileRow.Volume },
             }
             .Where(j => j.Value != null)
             .Select(j => new SecurityHistoricalValue

@@ -1,3 +1,11 @@
+#region Prices
+
+var deleteIndexPrices = ProcessContextStream.EfCoreDelete($"{TaskName} deleteIndexPrices", o => o.Set<IndexHistoricalValue>()
+        .Where((ctx,i)=> i.Date == new DateTime(2020,12,31) && i.Index.InternalCode == "MSCIWORLDNETUSD"
+        && (i.Type == HistoricalValueType.MKT || i.Type == HistoricalValueType.TRP)));
+
+#endregion
+
 #region Cash Issuer
 var cashSecuritiesWithNoIssuer = ProcessContextStream.EfCoreSelect($"{TaskName}: get cash securities", (ctx, j) => 
                         ctx.Set<Cash>().Where(i => !i.IssuerId.HasValue));
@@ -13,7 +21,7 @@ var saveCashIssuers = cashSecuritiesWithNoIssuer.Select($"{TaskName}: set issuer
      .EfCoreSave($"{TaskName}: save cash");
 #endregion
 
-return ProcessContextStream.WaitWhenDone("Wait done",saveCashIssuers);
+return ProcessContextStream.WaitWhenDone("Wait done",saveCashIssuers,deleteIndexPrices);
 
 
 #region Fix primary shareclass

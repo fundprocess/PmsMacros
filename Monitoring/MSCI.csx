@@ -7,6 +7,7 @@ var rows = Referential.BenchmarkLastPositions
             .Select(i => NewListRow(securitiesDic[i.SecurityId.Value].Name , new[] {
             NewValue("No","No").SetNumber(inc++),    
             NewValue("ISIN","ISIN").SetText(securitiesDic[i.SecurityId.Value].Isin),
+            NewValue("Ccy","Ccy").SetText(securitiesDic[i.SecurityId.Value].CcyIso),
             NewValue("Weight","Weight").SetPercentage(i.Weight),
             NewValue("Date","Date").SetDate(i.Date),
             securitiesDic[i.SecurityId.Value].PriceDate != null ?

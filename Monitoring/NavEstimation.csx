@@ -29,12 +29,13 @@ double totalTnaEstimation = posVal.Any(i => !i.EstimatedMarketValueInPortfolioCc
         : posVal.Sum(i => i.EstimatedMarketValueInPortfolioCcy.Value);
 
 DateTime navEstimationDate = posVal.Max(i => i.PriceDate);
+
 double sumCurrentMvs = Referential.LastPositions.Where(i => i.PortfolioId == portfolio.Id)
         .Sum(i=>i.MarketValueInPortfolioCcy.Value); // from Universal
 
 //-------- SHARE CLASSES NAV --------
 foreach (var sc in Referential.InternalShareClasses.Where(i=>i.PortfolioId == portfolio.Id).OrderByDescending(i => i.Tna.Value))
-{        
+{       
         double newSubsriptionInShares = 0.0; //!! To be provided by BBH
         double newRedemptionInShares = 0.0; //!! To be provided by BBH
         double newNbShares = sc.Nbs.Value + newSubsriptionInShares - newRedemptionInShares;
@@ -48,23 +49,36 @@ foreach (var sc in Referential.InternalShareClasses.Where(i=>i.PortfolioId == po
         
         newShareClassTna = newShareClassTna - mgmtFeeAmount;  
         double newNav = newShareClassTna  / newNbShares;
+        
+        double benchmarkPerformance = double.NaN;
+        var schvs = Referential.ShareClassHistValues.Where(i => i.ShareClassId == sc.Id).OrderByDescending(i=>i.Date).Take(2).ToList();
+        if ((schvs.Count == 2) && schvs.First().Date == navEstimationDate)
+                benchmarkPerformance = (schvs.First().BenchmarkAdjustedPrice.Value / schvs.Last().BenchmarkAdjustedPrice.Value) - 1;
 
         var table1 = new List<MacroResultRow>();
-        table1.Add(NewListRow("Next NAV", new[] {
+        table1.Add(NewListRow($"Estimated NAV",$"EstimatedNAV-{sc.Id}" , new[] {
                 NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
                 NewValue("Value").SetNumber(newNav),
                 NewValue("% Change","pChange").SetPercentage((newNav/sc.Nav.Value)-1)
                         .SetDirection(GetDirection(newNav, sc.Nav.Value))
                         .SetSentiment(GetSentiment(newNav, sc.Nav.Value)),
                 }));
+        
+        table1.Add(NewListRow($"Benchmark % Change",$"BenchmarkPChange" , new[] {
+                NewValue("As of Date","AsOfDate").SetDate(schvs.First().Date),
+                NewValue("Value").SetText("-"),
+                NewValue("% Change","pChange").SetPercentage(benchmarkPerformance)
+                        .SetDirection(GetDirection(schvs.First().BenchmarkAdjustedPrice, schvs.Last().BenchmarkAdjustedPrice))
+                        .SetSentiment(GetSentiment(schvs.First().BenchmarkAdjustedPrice, schvs.Last().BenchmarkAdjustedPrice)),
+                }));
 
-        table1.Add(NewListRow("Current NAV", new[] {
+        table1.Add(NewListRow($"Current NAV (from FundAdmin)",$"CurrentNAV-{sc.Id}" , new[] {
                 NewValue("As of Date","AsOfDate").SetDate(sc.NavDate.Value),
                 NewValue("Value").SetNumber(sc.Nav.Value),
                 NewValue("% Change","pChange").SetText("")
                 }));
 
-        table1.Add(NewListRow("Next Total Net Asset", new[] {
+        table1.Add(NewListRow($"Estimated AUM",$"EstimatedAUM-{sc.Id}", new[] {
                 NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
                 NewValue("Value").SetNumber(newShareClassTna),
                 NewValue("% Change","pChange").SetPercentage((newShareClassTna/sc.Tna.Value)-1)
@@ -72,7 +86,7 @@ foreach (var sc in Referential.InternalShareClasses.Where(i=>i.PortfolioId == po
                         .SetSentiment(GetSentiment(newShareClassTna, sc.Tna.Value)),
                 }));      
 
-        table1.Add(NewListRow("Current Total Net Asset", new[] {
+        table1.Add(NewListRow($"Current AUM  (from FundAdmin)",$"CurrentAUM-{sc.Id}", new[] {
                 NewValue("As of Date","AsOfDate").SetDate(sc.NavDate),
                 NewValue("Value").SetNumber(sc.Tna.Value),
                 NewValue("% Change","pChange").SetText("")
@@ -82,24 +96,24 @@ foreach (var sc in Referential.InternalShareClasses.Where(i=>i.PortfolioId == po
                 NewValue("Value").SetNumber(mgmtFeeAmount),
                 NewValue("% Change","pChange").SetText("")
                 }));
-        table1.Add(NewListRow("Total Subscription (waiting JD)", new[] {
+        table1.Add(NewListRow("Total Subscription (waiting BBH files)", new[] {
                 NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
                 NewValue("Value").SetText("N/A"),
                 NewValue("% Change","pChange").SetText("")
                 }));
 
-        table1.Add(NewListRow("Total Redemption (waiting JD)", new[] {
+        table1.Add(NewListRow("Total Redemption (waiting BBH files)", new[] {
                 NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
                 NewValue("Value").SetText("N/A"),
                 NewValue("% Change","pChange").SetText("")
                 }));
 
-        parentSection.AddList($"{sc.Name} - NAV Estimation",$"{sc.Name}_NavEstimation", table1);
+        parentSection.AddList($"{sc.Name} - Estimated NAV",$"{sc.Name}_NavEstimation - {portfolio.InternalCode}", table1);
 }
 
 //-------- SUB FUND TNA --------
 var tableTna = new List<MacroResultRow>();
-tableTna.Add(NewListRow("Next Total Net Asset", new[] {
+tableTna.Add(NewListRow("Estimated AUM", $"Estimated AUM-{portfolio.Id}", new[] {
         NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
         NewValue("TNA","totalTna").SetNumber(totalTnaEstimation),
         NewValue("% Change","pChange").SetPercentage((totalTnaEstimation/portfolio.Tna.Value)-1)
@@ -107,13 +121,13 @@ tableTna.Add(NewListRow("Next Total Net Asset", new[] {
                         .SetSentiment(GetSentiment(totalTnaEstimation, portfolio.Tna.Value)),
         }));
 
-tableTna.Add(NewListRow("Current Total Net Asset", new[] {
+tableTna.Add(NewListRow("Current AUM (from FundAdmin)", new[] {
         NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
         NewValue("TNA","totalTna").SetNumber(portfolio.Tna.Value),
         NewValue("% Change","pChange").SetText("")
         }));
 
-tableTna.Add(NewListRow("Sum of Positions Current Values ", new[] {
+tableTna.Add(NewListRow("Sum of Position Current Values", new[] {
         NewValue("As of Date","AsOfDate").SetDate(navEstimationDate),
         NewValue("TNA","totalTna").SetNumber(sumCurrentMvs),
         NewValue("% Change","pChange").SetText("")
@@ -125,10 +139,10 @@ tableTna.Add(NewListRow("Sum of Positions Current Values ", new[] {
 //-------- POSITIONS --------
 var positionRows = posVal.OrderByDescending(i => i.EstimatedMarketValueInPortfolioCcy)
         .Select(newPos =>
-            NewListRow($"{securities[newPos.SecurityId].Name}", new[] {                
+            NewListRow($"{securities[newPos.SecurityId].Name}",$"{newPos.SecurityId}", new[] {                
                 securities[newPos.SecurityId].PriceDate.HasValue? 
-                    NewValue("Price Date").SetDate(securities[newPos.SecurityId].PriceDate.Value)
-                    : NewValue("Price Date").SetText("-"),
+                    NewValue("Price Date","Price Date").SetDate(securities[newPos.SecurityId].PriceDate.Value)
+                    : NewValue("Price Date","Price Date").SetText("-"),
                 securities[newPos.SecurityId].Price.HasValue? 
                     NewValue("Price").SetNumber(securities[newPos.SecurityId].Price.Value)
                     : NewValue("Price").SetText("-"),
@@ -137,13 +151,13 @@ var positionRows = posVal.OrderByDescending(i => i.EstimatedMarketValueInPortfol
                         NewValue($"FxRate","FxRate").SetNumber(getFxRate(portfolio.CcyIso,securities[newPos.SecurityId].CcyIso).Value)
                         : NewValue($"FxRate","FxRate").SetText("N/A"),
                 NewValue("Q").SetNumber(newPos.NewQuantity),
-                NewValue($"Current Value ({portfolio.CcyIso})","CurrentValue")
+                NewValue($"Current FA Value ({portfolio.NavDate.Value.ToString("dd/MM")})","CurrentValue")
                                 .SetNumber(newPos.CurrentMarketValueInPortfolioCcy),
                 newPos.EstimatedMarketValueInPortfolioCcy.HasValue?
-                        NewValue($"New Value ({portfolio.CcyIso})","EstimatedValue")
+                        NewValue($"Estimated Value ({navEstimationDate.ToString("dd/MM")})","EstimatedValue")
                                 .SetNumber(newPos.EstimatedMarketValueInPortfolioCcy.Value)
-                                
-                        : NewValue($"New Value ({portfolio.CcyIso})","EstimatedValue").SetText("N/A"),
+                        : NewValue($"Estimated Value ({navEstimationDate.ToString("dd/MM")})","EstimatedValue")
+                                .SetText("N/A"),
                 newPos.EstimatedMarketValueInPortfolioCcy.HasValue?
                         NewValue($"% Change","pChange")
                                 .SetPercentage((newPos.EstimatedMarketValueInPortfolioCcy.Value/newPos.CurrentMarketValueInPortfolioCcy)-1)

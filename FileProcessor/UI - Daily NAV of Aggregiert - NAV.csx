@@ -112,7 +112,7 @@ var savedShareClassHvStream = shareClassNavFileStream
             Value = i.Value.Value
         }})
     .EfCoreSave($"{TaskName}: save share class hv", o => o
-        .Entity(i=>i.hv).SeekOn(i => new { i.Date, i.SecurityId, i.Type }).DoNotUpdateIfExists()
+        .Entity(i=>i.hv).SeekOn(i => new { i.Date, i.SecurityId, i.Type })
         .Output((i,j)=> i));
 
 var fundTnaStream = savedShareClassHvStream

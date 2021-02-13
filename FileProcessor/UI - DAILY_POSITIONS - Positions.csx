@@ -100,7 +100,7 @@ var tnaStream = posFileStream
     .EfCoreSave($"{TaskName}: save share class hv", o => o
         .SeekOn(i => new { i.Date, i.PortfolioId, i.Type }));
 
-//Create CASH lines
+//Create CASH SECURITIES
 var targetCashStream = posFileStream
     .Where($"{TaskName}: keep cash (non-security) only", 
         i => string.IsNullOrEmpty(i.InstrumentType1)) // or i.AssetLevelI != "Securities"
@@ -156,11 +156,16 @@ var targetSecurityInstrumentStream = posFileStream
 var targetSecurityStream = targetCashStream
     .Union($"{TaskName}: merge cash and target securities", targetSecurityInstrumentStream);
 
+
 var portfolioCompositionStream = posFileStream
     .Distinct($"{TaskName}: distinct composition", i => new { i.FundNumber, i.ValuationDate }, true)
-    .CorrelateToSingle($"{TaskName}: get composition portfolio", subFundsStream, 
+    .CorrelateToSingle($"{TaskName}: get composition portfolio", subFundsStream,
         (l, r) => new PortfolioComposition { PortfolioId = r.Id, Date = l.ValuationDate })
-    .EfCoreSave($"{TaskName}: save composition", o => o.SeekOn(i => new { i.PortfolioId, i.Date }));
+    .EfCoreDelete($"{TaskName} delete portfolio statistics", o => o
+        .Set<PortfolioStatistics>().Where((i, j) => j.PortfolioId == i.PortfolioId && j.Date == i.Date))    
+    .EfCoreDelete($"{TaskName} delete compos if existing", o => o
+        .Set<PortfolioComposition>().Where((i, j) => j.PortfolioId == i.PortfolioId && j.Date == i.Date))
+    .EfCoreSave($"{TaskName}: save compositions", o => o.SeekOn(i => new { i.PortfolioId, i.Date }));
 
 var positionStream = posFileStream
     .CorrelateToSingle($"{TaskName}: get related security for position", targetSecurityStream, (l, r) => new { FileRow = l, Security = r })

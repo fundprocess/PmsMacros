@@ -521,7 +521,7 @@ var companyInvestorRelationshipStream = companyStream
         .Entity(i=>i.Relationship).SeekOn(i => i.EntityId).DoNotUpdateIfExists().Output((i,e)=> i));
 
 var investorsStream = individualInvestorRelationshipStream
-    .Union($"{TaskName}: merge of the investor relationship streams", companyInvestorRelationshipStream);
+    .Union($"{TaskName}: union of the investor relationship streams", companyInvestorRelationshipStream);
 
 var relationshipPortfoliosStream = investorsStream
 	.Lookup($"{TaskName}: Link Investor-Porfolio - get related portfolio",portfolioStream, 

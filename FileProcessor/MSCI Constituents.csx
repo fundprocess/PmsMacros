@@ -124,56 +124,56 @@ var assignGics = msciFileStream
             ClassificationTypeId = j.Id,
         })
     .EfCoreSave("Save gics security classifications");
-    
-//We create an MSCI portfolio
-var sicavsStream = ProcessContextStream.EfCoreSelect($"{TaskName} Get sicav stream", (ctx, j) => ctx.Set<Sicav>());
-var subFundsStream = ProcessContextStream.CrossApplyEnumerable($"{TaskName}: Cross-apply Sub Fund",ctx=>
-    new [] {
-        new { InternalCode = "MSCI-Estimated", Name = "MSCI-Estimated", Currency="USD", SicavCode = "UI I"},
-    })
-    .Lookup($"{TaskName} get related sicav", sicavsStream, i => i.SicavCode, i => i.InternalCode, 
-        (l,r) => new {Row = l, Sicav = r})
-    .LookupCurrency($"{TaskName}: Create Sub Fund Ccy", i => i.Row.Currency,
-        (l,r) => new {l.Row, l.Sicav , Currency = r})
-    .Select($"{TaskName}: Create Sub Fund",i => new SubFund{
-        InternalCode = i.Row.InternalCode,
-        Name = i.Row.Name,
-        ShortName = i.Row.InternalCode,
-        CurrencyId = i.Currency.Id,
-        SicavId = i.Sicav.Id,
-        PricingFrequency = FrequencyType.Daily,
-    })
-    .EfCoreSave($"{TaskName}: Save Sub Fund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists())
-    .EnsureSingle($"{TaskName}: ensures only one sub fund");
 
-//Import Compos
-var deleteNewerExistingPortfolioCompoStream = distinctMinBenchmarkComposStream
-    .EfCoreDelete($"{TaskName} Existing newer compos 2", o => o
-        .Set<PortfolioComposition>()
-        .Where((i,j) => j.Portfolio.InternalCode == i.FundCode && j.Date >= i.Date));
+// //We create an MSCI-Estimated portfolio
+// var sicavsStream = ProcessContextStream.EfCoreSelect($"{TaskName} Get sicav stream", (ctx, j) => ctx.Set<Sicav>());
+// var subFundsStream = ProcessContextStream.CrossApplyEnumerable($"{TaskName}: Cross-apply Sub Fund",ctx=>
+//     new [] {
+//         new { InternalCode = "MSCI-Estimated", Name = "MSCI-Estimated", Currency="USD", SicavCode = "UI I"},
+//     })
+//     .Lookup($"{TaskName} get related sicav", sicavsStream, i => i.SicavCode, i => i.InternalCode, 
+//         (l,r) => new {Row = l, Sicav = r})
+//     .LookupCurrency($"{TaskName}: Create Sub Fund Ccy", i => i.Row.Currency,
+//         (l,r) => new {l.Row, l.Sicav , Currency = r})
+//     .Select($"{TaskName}: Create Sub Fund",i => new SubFund{
+//         InternalCode = i.Row.InternalCode,
+//         Name = i.Row.Name,
+//         ShortName = i.Row.InternalCode,
+//         CurrencyId = i.Currency.Id,
+//         SicavId = i.Sicav.Id,
+//         PricingFrequency = FrequencyType.Daily,
+//     })
+//     .EfCoreSave($"{TaskName}: Save Sub Fund", o => o.SeekOn(i => i.InternalCode).DoNotUpdateIfExists())
+//     .EnsureSingle($"{TaskName}: ensures only one sub fund");
 
-var portfolioCompositionStream = msciFileStream
-    .WaitWhenDone($"{TaskName}: wait newer portoflio compositions deletion", deleteNewerExistingPortfolioCompoStream)
-    .Distinct($"{TaskName}: distinct composition - msci portfolio", i => new { i.FundCode, i.Date })
-    .Select($"{TaskName}: create composition - msci portfolio",subFundsStream, (i,j) => new PortfolioComposition { 
-        PortfolioId = j.Id, 
-        Date = i.Date})
-    .EfCoreSave($"{TaskName}: save composition - msci portfolio", o => o.SeekOn(i => new { i.PortfolioId, i.Date }));
+// //Import Compos
+// var deleteNewerExistingPortfolioCompoStream = distinctMinBenchmarkComposStream
+//     .EfCoreDelete($"{TaskName} Existing newer compos 2", o => o
+//         .Set<PortfolioComposition>()
+//         .Where((i,j) => j.Portfolio.InternalCode == i.FundCode && j.Date >= i.Date));
 
-var positionsStream2 = msciFileStream
-    .CorrelateToSingle($"{TaskName}: get related security for position - msci portfolio", securitiesStream, 
-        (l, r) => new { FileRow = l, Security = r })
-    .CorrelateToSingle($"{TaskName}: get related composition for position - msci portfolio", portfolioCompositionStream, 
-        (l, r) => new { FileRow = l.FileRow, Security = l.Security, Composition = r })
-    .Select($"{TaskName}: create position", i => new Position
-        {
-            PortfolioCompositionId = i.Composition.Id,
-            SecurityId = i.Security.Id,
-            //MarketValueInPortfolioCcy = i.FileRow.Weight.Value,
-            //Value = 1,
-            Weight = i.FileRow.Weight.Value,
-        })
-        .EfCoreSave($"{TaskName}: save positions - msci portfolio", o => o.SeekOn(i => new { i.SecurityId, i.PortfolioCompositionId }));
+// var portfolioCompositionStream = msciFileStream
+//     .WaitWhenDone($"{TaskName}: wait newer portoflio compositions deletion", deleteNewerExistingPortfolioCompoStream)
+//     .Distinct($"{TaskName}: distinct composition - msci portfolio", i => new { i.FundCode, i.Date })
+//     .Select($"{TaskName}: create composition - msci portfolio",subFundsStream, (i,j) => new PortfolioComposition { 
+//         PortfolioId = j.Id, 
+//         Date = i.Date})
+//     .EfCoreSave($"{TaskName}: save composition - msci portfolio", o => o.SeekOn(i => new { i.PortfolioId, i.Date }));
+
+// var positionsStream2 = msciFileStream
+//     .CorrelateToSingle($"{TaskName}: get related security for position - msci portfolio", securitiesStream, 
+//         (l, r) => new { FileRow = l, Security = r })
+//     .CorrelateToSingle($"{TaskName}: get related composition for position - msci portfolio", portfolioCompositionStream, 
+//         (l, r) => new { FileRow = l.FileRow, Security = l.Security, Composition = r })
+//     .Select($"{TaskName}: create position", i => new Position
+//         {
+//             PortfolioCompositionId = i.Composition.Id,
+//             SecurityId = i.Security.Id,
+//             MarketValueInPortfolioCcy = i.FileRow.Weight.Value * 10000,
+//             //Value = 1,
+//             Weight = i.FileRow.Weight.Value,
+//         })
+//         .EfCoreSave($"{TaskName}: save positions - msci portfolio", o => o.SeekOn(i => new { i.SecurityId, i.PortfolioCompositionId }));
 
 return FileStream.WaitWhenDone($"{TaskName}: wait till everything is saved", securitiesStream, benchPositionsStream, 
-esgStream, saveBbgCode,positionsStream2,assignGics);
+esgStream, saveBbgCode, assignGics) ;
