@@ -161,6 +161,10 @@ var portfolioCompositionStream = posFileStream
     .Distinct($"{TaskName}: distinct composition", i => new { i.FundNumber, i.ValuationDate }, true)
     .CorrelateToSingle($"{TaskName}: get composition portfolio", subFundsStream,
         (l, r) => new PortfolioComposition { PortfolioId = r.Id, Date = l.ValuationDate })
+    .EfCoreDelete($"{TaskName} delete portfolio stress test", o => o
+        .Set<FundProcess.Pms.DataAccess.Schemas.RiskMgmt.PortfolioCompositionStressTestImpact>()
+        .Where((i, j) => j.PortfolioComposition.PortfolioId == i.PortfolioId && j.PortfolioComposition.Date == i.Date))    
+
     .EfCoreDelete($"{TaskName} delete portfolio statistics", o => o
         .Set<PortfolioStatistics>().Where((i, j) => j.PortfolioId == i.PortfolioId && j.Date == i.Date))    
     .EfCoreDelete($"{TaskName} delete compos if existing", o => o
@@ -293,7 +297,7 @@ var classificationOfSecurityStream = equitySubSectorAssignations
 
 return FileStream.WaitWhenDone($"{TaskName}: wait until all positions/classifications of security are saved",
             positionStream, classificationOfSecurityStream,stoxxSectorAssignations,equitySubSectorAssignations
-            ,positionStream,targetSecurityInstrumentStream);
+            ,tnaStream,targetSecurityInstrumentStream);
 
 //----------HELPERS-----------------
 string GetInternalCode(string isin,string securityCode)

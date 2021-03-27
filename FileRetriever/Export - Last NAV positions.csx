@@ -24,8 +24,8 @@ var csvFileDefinition = FlatFileDefinition.Create(i => new
     Weight = i.ToNumberColumn<double>("Weight", "."),
 }).IsColumnSeparated(',');
 
-var gicsStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get GICS", (ctx, j) => 
-        ctx.Set<FundProcess.Pms.DataAccess.Schemas.Classifications.Classification>());
+// var gicsStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get GICS", (ctx, j) => 
+//         ctx.Set<FundProcess.Pms.DataAccess.Schemas.Classifications.Classification>());
 
 var export = dbStream.CrossApplyEnumerable($"{TaskName}: Cross-apply Positions", i=> i.Positions)
     .Select("create extract items", i => new {

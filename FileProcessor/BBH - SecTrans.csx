@@ -63,7 +63,7 @@ var subFundStream = ProcessContextStream.EfCoreSelect($"{TaskName}: get securiti
         .EnsureSingle($"{TaskName}: ensures only one sub fund");
 
 var savedTransactionStream = secTransFileStream
-    .EfCoreLookup($"{TaskName}: get related target security", o => o.Set<SecurityInstrument>().On(i => i.ISIN, i=> i.Isin)
+    .EfCoreLookup($"{TaskName}: get related target security", o => o.Set<SecurityInstrument>().On(i => i.ISIN, i=> i.InternalCode)
         .Select((l, r) => new { FileRow = l, TargetSecurity = r }).CacheFullDataset())
     .CorrelateToSingle($"{TaskName}: get broker by internal code", counterpartyStream, 
         (l, r) => new { FileRow = l.FileRow, TargetSecurity = l.TargetSecurity, Broker = r })

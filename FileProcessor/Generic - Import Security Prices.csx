@@ -6,6 +6,13 @@ var fileDefinition = FlatFileDefinition.Create(i => new
     Price = i.ToNumberColumn<double?>("Price", "."),
     AdjustedPrice = i.ToNumberColumn<double?>("AdjustedPrice", "."),
     Volume = i.ToNumberColumn<double?>("Volume", "."),
+    
+    ESG = i.ToNumberColumn<double?>("ESG", "."), //ESG
+    DebtToEquity = i.ToNumberColumn<double?>("DebtToEquity", "."),	//DTEQ
+    DebtToMarketCap = i.ToNumberColumn<double?>("DebtToMarketCap", "."), //DTMC
+    DividendYield = i.ToNumberColumn<double?>("DividendYield", "."), //DYLD
+    MarketCap = i.ToNumberColumn<double?>("MarketCap", "."), //CAP
+    ForwardPE = i.ToNumberColumn<double?>("ForwardPE", "."), //FPER
 }).IsColumnSeparated(',');
 
 
@@ -26,6 +33,12 @@ var pricesStream = pricesFileStream
                 new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.MKT, Value = i.FileRow.Price },
                 new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.TRP, Value = i.FileRow.AdjustedPrice },
                 new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.VOLU, Value = i.FileRow.Volume },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.ESG, Value = i.FileRow.ESG },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.CAP, Value = i.FileRow.MarketCap },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.DYLD, Value = i.FileRow.DividendYield },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.FPER, Value = i.FileRow.ForwardPE },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.DTEQ, Value = i.FileRow.DebtToEquity },
+                new { SecurityId = i.Security.Id,Date = i.FileRow.Date, Type = HistoricalValueType.DTMC, Value = i.FileRow.DebtToMarketCap}
             }
             .Where(j => j.Value != null)
             .Select(j => new SecurityHistoricalValue

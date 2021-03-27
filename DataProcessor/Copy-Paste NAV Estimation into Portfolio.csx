@@ -22,7 +22,6 @@ var estimatedPortfolioTnasStream = resultItemsStream
         .CrossApplyEnumerable($"{TaskName} Cross apply ResultSets from TNA Estimated", i=> GetEstimatedTnas(i.Result))
         .EfCoreSave($"{TaskName} Save portfolio Tnas",  o => o.SeekOn(i => new {i.PortfolioId,i.Date,i.Type}).DoNotUpdateIfExists());
 
-
 var newCompositionsStream = resultItemsStream
         .Select($"{TaskName} Cross apply ResultSets for compo", i=> GetEstimatedComposition(i.Result));
 
@@ -37,6 +36,8 @@ var newCompoSaved = newCompositionsStream
                 PortfolioId = (i.Portfolio != null)? i.Portfolio.Id : throw new Exception("Portfolio not found: " + i.Row.PortfolioCode) ,
                 Date = i.Row.Date
         })
+        .EfCoreDelete($"{TaskName} Delete current positions", o=>o.Set<Position>().Where((composition, position) 
+                => position.PortfolioComposition.Date == composition.Date && position.PortfolioComposition.PortfolioId == composition.PortfolioId ))
         .EfCoreSave($"{TaskName} Save composition",  o => o.SeekOn(i => new {i.PortfolioId,i.Date}).DoNotUpdateIfExists())
         .EnsureSingle($"{TaskName} ensure single");
 
@@ -53,6 +54,7 @@ var newPositionsSaved = newCompositionsStream.CrossApplyEnumerable($"{TaskName} 
                 ValuationPrice = i.Position.Position.ValuationPrice,
                 Weight = i.Position.Position.Weight,
         })
+        .ComputeWeight(TaskName)
         .EfCoreSave($"{TaskName} Save Positions",  o => o.SeekOn(i => new {i.PortfolioCompositionId,i.SecurityId}).DoNotUpdateIfExists());
         
 ProcessContextStream.WaitWhenDone("wait till everything is done", newPositionsSaved, estimatedShareClassHvsStream, estimatedPortfolioTnasStream);
@@ -127,6 +129,7 @@ Composition GetEstimatedComposition(MonitoringResult result)
                 ValuationPrice =  (i.Data["Price"].Result.Number.HasValue)? i.Data["Price"].Result.Number.Value: (double?) null,
         }).ToList();
         
+        newPositions = newPositions.Where(i => i.Value != 0.0).ToList();
         double total = newPositions.Sum(i => i.MarketValueInPortfolioCcy);
         foreach (var newPos in newPositions)        
             newPos.Weight = newPos.MarketValueInPortfolioCcy / total;

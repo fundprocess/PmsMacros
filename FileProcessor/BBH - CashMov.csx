@@ -150,7 +150,7 @@ var savedCashMovementsStream = cashMovFileStream
         (l, r) => new { l.FileRow, l.Portfolio, Currency = r})
     .CorrelateToSingle($"{TaskName}: get broker by internal code", counterpartyStream, 
         (l, r) => new { l.FileRow, l.Portfolio, l.Currency, Broker = r})
-    .Lookup($"{TaskName} Lookup related security",securitiesStream, i => i.FileRow.ISIN, i => i.Isin,
+    .Lookup($"{TaskName} Lookup related security",securitiesStream, i => i.FileRow.ISIN, i => i.InternalCode,
         (l, r) => new { l.FileRow, l.Portfolio, l.Currency, l.Broker, Security = r })
     .Lookup($"{TaskName} Lookup related sec trans",securityTransactionsStream, 
         i => i.FileRow.SystemReferenceNumber, //1722027040000
@@ -205,7 +205,7 @@ var savedFxCashMovementsStream = fxTransactionsFileStream
         (l, r) => new { l.FileRow, l.Portfolio, l.CurrencyFrom , CurrencyTo = r})
     .CorrelateToSingle($"{TaskName}: FxMov> get broker by internal code", bankOfDespositCompanyStream, 
         (l, r) => new { l.FileRow, l.Portfolio, l.CurrencyFrom, l.CurrencyTo, Depositary = r})
-    .Lookup($"{TaskName} FxMov> Lookup related security",securitiesStream, i => i.FileRow.ISIN, i => i.Isin,
+    .Lookup($"{TaskName} FxMov> Lookup related security",securitiesStream, i => i.FileRow.ISIN, i => i.InternalCode,
         (l, r) => new { l.FileRow, l.Portfolio, l.CurrencyFrom, l.CurrencyTo, l.Depositary, Security = r })
     .Select($"{TaskName}: FxMov> Create cash movement", i => new CashMovement{
         PortfolioId = (i.Portfolio != null)? i.Portfolio.Id : throw new Exception("Portfolio not found for: " + i.FileRow.CurrencyAccountName.Split(" - ")[1].Trim()),

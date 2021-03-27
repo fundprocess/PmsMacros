@@ -115,7 +115,7 @@ var savedSecTransStream = subRedStream
         (l,r) => new {FileRow = l, Portfolio = r})
     .LookupCurrency($"{TaskName}: SecTrans - get currency", i => i.FileRow.BaseCurrency, 
         (l, r) => new { l.FileRow, l.Portfolio, Currency = r})
-    .Lookup($"{TaskName} SecTrans - Lookup related share class", shareClassesStream, i => i.FileRow.ISIN, i => i.Isin,
+    .Lookup($"{TaskName} SecTrans - Lookup related share class", shareClassesStream, i => i.FileRow.ISIN, i => i.InternalCode,
         (l, r) => new { l.FileRow, l.Portfolio, l.Currency, ShareClass = r })
     .Select($"{TaskName}: Create SecTrans", i => new SecurityTransaction {
         PortfolioId = (i.Portfolio != null)? i.Portfolio.Id : throw new Exception("Portfolio not found for: " + i.FileRow.FundName),
@@ -155,7 +155,7 @@ var savedCashMovementsStream = subRedStream
         (l,r) => new {FileRow = l, Portfolio = r})
     .LookupCurrency($"{TaskName}: get currency", i => i.FileRow.BaseCurrency, 
         (l, r) => new { l.FileRow, l.Portfolio, Currency = r})
-    .Lookup($"{TaskName} Lookup related share class", shareClassesStream, i => i.FileRow.ISIN, i => i.Isin,
+    .Lookup($"{TaskName} Lookup related share class", shareClassesStream, i => i.FileRow.ISIN, i => i.InternalCode,
         (l, r) => new { l.FileRow, l.Portfolio, l.Currency, ShareClass = r })
     .CorrelateToSingle($"{TaskName} get related transaction", savedSecTransStream,
         (l, r) => new { l.FileRow, l.Portfolio, l.Currency, l.ShareClass, SecTrans = r })
